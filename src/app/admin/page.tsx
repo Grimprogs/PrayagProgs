@@ -2,385 +2,414 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useProperties } from '@/context/PropertiesContext';
 import { useToast } from '@/context/ToastContext';
-import { Property, RadarScores } from '@/types';
-import {
-  ALL_STATES,
-  ALL_CITIES,
-  STATE_CITIES,
-  getStateForCity,
-  getCitiesForState,
-  getLocalitiesForCity,
-} from '@/data/locations';
+import { DiscoveryFlat, PublicVastuStatus } from '@/data/discovery';
 
-const PRESET_IMAGES = [
-  {
-    name: 'Mumbai Highrise',
-    url: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Bangalore Modern Villa',
-    url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Gurgaon Sky Penthouse',
-    url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Pune Auspicious Heights',
-    url: 'https://images.unsplash.com/photo-1574362848149-11496d93a7c7?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Hyderabad Grand Mansion',
-    url: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    name: 'Chennai Coastal Villa',
-    url: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80',
-  },
-];
+type AdminTab = 'overview' | 'cities' | 'locations' | 'projects' | 'wings' | 'flats';
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const { showToast } = useToast();
-  const { properties, addProperty, updateProperty, deleteProperty, toggleFeatured, resetToDefault } = useProperties();
+  const {
+    discoveryFlats,
+    discoveryProjects,
+    addDiscoveryFlat,
+    updateDiscoveryFlat,
+    deleteDiscoveryFlat,
+    resetDiscoveryToDefault,
+  } = useProperties();
 
-  // Active top tab in admin
-  const [activeTab, setActiveTab] = useState<'catalog' | 'radarStudio' | 'seo' | 'reports'>('catalog');
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<AdminTab>('flats');
 
-  // Search & Filters in Admin
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterState, setFilterState] = useState('All');
-  const [filterType, setFilterType] = useState('All');
+  // Drill-down filters
+  const [selectedCityFilter, setSelectedCityFilter] = useState<string>('All');
+  const [selectedLocalityFilter, setSelectedLocalityFilter] = useState<string>('All');
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('All');
+  const [selectedWingFilter, setSelectedWingFilter] = useState<string>('All');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('All');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Modal State for Add / Edit
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  // Flat Modal State (Add / Edit)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingFlatId, setEditingFlatId] = useState<string | null>(null);
 
-  // Form State
-  const [formData, setFormData] = useState<Partial<Property>>({
-    title: '',
-    subtitle: '',
-    location: '',
-    locality: '',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    price: '₹ 1.85 Cr',
-    priceNumeric: 18500000,
-    priceDetail: '₹ 14,200 / sq.ft.',
-    bhk: '3 BHK',
-    bhkNum: 3,
-    sqft: '1,325 sq.ft.',
-    propertyType: 'Apartment',
-    facing: 'North-East',
-    reraId: 'P51800028911',
-    reraStatus: 'Verified & Active',
-    possession: 'Ready to Move',
-    vastuScore: 8.8,
-    vastuScoreMax: 10,
-    vastuStatus: 'Functionally Balanced',
-    vastuGrade: 'Grade A+',
-    featured: false,
-    heroImage: PRESET_IMAGES[0].url,
-    radarScores: {
-      N: 9.0,
-      NE: 9.2,
-      E: 8.8,
-      SE: 7.9,
-      S: 8.2,
-      SW: 8.4,
-      W: 8.0,
-      NW: 8.1,
-    },
-    overview: 'Premium Vastu-aligned residential unit designed with harmonious spatial zoning and abundant cosmic prana circulation.',
-  });
+  // Form Fields
+  const [formCity, setFormCity] = useState('Mumbai');
+  const [formLocality, setFormLocality] = useState('Andheri');
+  const [formProject, setFormProject] = useState('Godrej');
+  const [formWing, setFormWing] = useState('Wing A');
+  const [formBhk, setFormBhk] = useState('2 BHK');
+  const [formPpCode, setFormPpCode] = useState('');
+  const [formVastuStatus, setFormVastuStatus] = useState<PublicVastuStatus>('Aligned');
+  const [formSeriesNumber, setFormSeriesNumber] = useState('1');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Dedicated property selected in Radar Studio tab
-  const [studioPropertyId, setStudioPropertyId] = useState<string>(properties[0]?.id || '');
-  const studioProperty = useProperties().properties.find((p) => p.id === studioPropertyId) || properties[0];
+  // Delete Confirmation Modal State
+  const [deletingFlat, setDeletingFlat] = useState<DiscoveryFlat | null>(null);
 
-  // Studio live radar scores state
-  const [studioScores, setStudioScores] = useState<RadarScores>(
-    studioProperty?.radarScores || { N: 9, NE: 9, E: 8.5, SE: 7.8, S: 8, SW: 8.2, W: 8, NW: 8.1 }
-  );
+  // Reset Confirmation Modal State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
-  // Dedicated property selected in SEO tab
-  const [seoPropertyId, setSeoPropertyId] = useState<string>(properties[0]?.id || '');
-  const seoProperty = properties.find((p) => p.id === seoPropertyId) || properties[0];
+  // --------------------------------------------------------------------------
+  // 1. DATA AGGREGATION & DERIVED STATS (Ground truth from active dataset)
+  // --------------------------------------------------------------------------
 
-  // SEO Form Fields
-  const [seoTitle, setSeoTitle] = useState(
-    seoProperty ? `${seoProperty.title} - ${seoProperty.bhk} in ${seoProperty.location} | PragyaaProp` : ''
-  );
-  const [seoDesc, setSeoDesc] = useState(
-    seoProperty
-      ? `${seoProperty.title}: 100% Vastu-Certified ${seoProperty.bhk} luxury home in ${seoProperty.location}. Precision 16-zone energy audit score ${seoProperty.vastuScore}/10. RERA ID: ${seoProperty.reraId}.`
-      : ''
-  );
-  const [seoKeywords, setSeoKeywords] = useState('vastu luxury homes, 16 zone vastu audit, rera verified, north entrance');
+  // All unique cities in dataset
+  const citiesList = useMemo(() => {
+    const map = new Map<string, {
+      name: string;
+      state: string;
+      locationsCount: Set<string>;
+      projectsCount: number;
+      wingsCount: number;
+      flatsCount: number;
+      hasClientSample: boolean;
+    }>();
 
-  // Sync SEO inputs when selected property changes
-  const handleSeoPropertyChange = (id: string) => {
-    setSeoPropertyId(id);
-    const p = properties.find((prop) => prop.id === id);
-    if (p) {
-      setSeoTitle(`${p.title} - ${p.bhk} in ${p.location} | PragyaaProp`);
-      setSeoDesc(
-        `${p.title}: 100% Vastu-Certified ${p.bhk} luxury home in ${p.location}. Precision 16-zone energy audit score ${p.vastuScore}/10. RERA ID: ${p.reraId}.`
-      );
-    }
-  };
-
-  // Sync Studio scores when studio property changes
-  const handleStudioPropertyChange = (id: string) => {
-    setStudioPropertyId(id);
-    const p = properties.find((prop) => prop.id === id);
-    if (p && p.radarScores) {
-      setStudioScores(p.radarScores);
-    }
-  };
-
-  // Helper to calculate radar SVG points from scores
-  const computeRadarPoints = (scores: RadarScores) => {
-    const cx = 100;
-    const cy = 100;
-    const maxR = 68;
-    const dirs: Array<{ key: keyof RadarScores; angleDeg: number; label: string; full: string }> = [
-      { key: 'N', angleDeg: -90, label: 'N', full: 'North (Kuber - Wealth)' },
-      { key: 'NE', angleDeg: -45, label: 'NE', full: 'North-East (Ishanya - Divinity)' },
-      { key: 'E', angleDeg: 0, label: 'E', full: 'East (Indra - Clarity & Health)' },
-      { key: 'SE', angleDeg: 45, label: 'SE', full: 'South-East (Agni - Cashflow)' },
-      { key: 'S', angleDeg: 90, label: 'S', full: 'South (Yama - Stability)' },
-      { key: 'SW', angleDeg: 135, label: 'SW', full: 'South-West (Nairutya - Strength)' },
-      { key: 'W', angleDeg: 180, label: 'W', full: 'West (Varuna - Gains & Success)' },
-      { key: 'NW', angleDeg: 225, label: 'NW', full: 'North-West (Vayu - Relations)' },
-    ];
-
-    const points = dirs.map((d) => {
-      const val = Math.max(2, Math.min(10, scores[d.key] ?? 7.5));
-      const r = (val / 10) * maxR;
-      const rad = (d.angleDeg * Math.PI) / 180;
-      const x = Math.round((cx + r * Math.cos(rad)) * 10) / 10;
-      const y = Math.round((cy + r * Math.sin(rad)) * 10) / 10;
-      return { ...d, val, x, y };
+    discoveryProjects.forEach((proj) => {
+      const existing = map.get(proj.city);
+      if (existing) {
+        existing.locationsCount.add(proj.locality);
+        existing.projectsCount += 1;
+        existing.wingsCount += proj.wings.length;
+        existing.flatsCount += proj.totalFlats;
+        if (proj.isClientSample) existing.hasClientSample = true;
+      } else {
+        map.set(proj.city, {
+          name: proj.city,
+          state: proj.state,
+          locationsCount: new Set([proj.locality]),
+          projectsCount: 1,
+          wingsCount: proj.wings.length,
+          flatsCount: proj.totalFlats,
+          hasClientSample: proj.isClientSample,
+        });
+      }
     });
 
-    const pointsStr = points.map((p) => `${p.x},${p.y}`).join(' ');
-    const avgScore = Math.round((points.reduce((sum, p) => sum + p.val, 0) / 8) * 10) / 10;
-    return { points, pointsStr, avgScore };
-  };
-
-  const modalRadarData = useMemo(() => {
-    return computeRadarPoints(formData.radarScores || { N: 8, NE: 8, E: 8, SE: 8, S: 8, SW: 8, W: 8, NW: 8 });
-  }, [formData.radarScores]);
-
-  const studioRadarData = useMemo(() => {
-    return computeRadarPoints(studioScores);
-  }, [studioScores]);
-
-  // Open modal for editing
-  const handleEditClick = (prop: Property) => {
-    setEditingPropertyId(prop.id);
-    setFormData({ ...prop });
-    setIsModalOpen(true);
-  };
-
-  // Open modal for new property
-  const handleAddNewClick = () => {
-    setEditingPropertyId(null);
-    const newId = `prop-${Date.now()}`;
-    setFormData({
-      id: newId,
-      slug: `kailash-divine-enclave-${Date.now().toString().slice(-4)}`,
-      title: 'Kailash Divine Enclave',
-      subtitle: 'Sacred Vedic Architecture 3 BHK',
-      location: 'Andheri (W), Mumbai',
-      locality: 'Andheri (W)',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      price: '₹ 2.15 Cr',
-      priceNumeric: 21500000,
-      priceDetail: '₹ 15,200 / sq.ft.',
-      bhk: '3 BHK',
-      bhkNum: 3,
-      sqft: '1,410 sq.ft.',
-      propertyType: 'Apartment',
-      facing: 'North-East',
-      reraId: `P${Math.floor(10000000000 + Math.random() * 90000000000)}`,
-      reraStatus: 'Verified & Active',
-      bathrooms: 3,
-      parking: 2,
-      possession: 'Ready to Move',
-      vastuScore: 8.8,
-      vastuScoreMax: 10,
-      vastuStatus: 'Functionally Balanced',
-      vastuGrade: 'Grade A+',
-      featured: false,
-      heroImage: PRESET_IMAGES[0].url,
-      galleryImages: [
-        { src: PRESET_IMAGES[0].url, caption: 'Main Facade', category: 'Exterior' },
-        { src: PRESET_IMAGES[1].url, caption: 'Living Area & Brahmasthan', category: 'Interior' },
-      ],
-      overview: 'Harmonious residential sanctuary designed strictly adhering to Vedic architectural tenets and 16-zone spatial calibration.',
-      spatialHighlights: [
-        { title: 'North Entrance (Kuber Zone)', status: 'Balanced', description: 'Draws abundance and uninterrupted career prosperity.' },
-        { title: 'Northeast Ishanya Puja Corner', status: 'Enhanced', description: 'Pure cosmic prana gateway for spiritual serenity.' },
-        { title: 'Southeast Agni Kitchen', status: 'Balanced', description: 'Fire element balanced with warm tones and right flame positioning.' },
-      ],
-      radarScores: {
-        N: 9.1,
-        NE: 9.4,
-        E: 8.7,
-        SE: 7.9,
-        S: 8.1,
-        SW: 8.4,
-        W: 8.2,
-        NW: 8.3,
-      },
-      zones16: [
-        { name: 'Entrance (N)', element: 'Water', score: 9.1, maxScore: 10, status: 'Balanced', direction: 'North', observation: 'Ideal placement' },
-        { name: 'Puja Sanctum (NE)', element: 'Water / Ether', score: 9.4, maxScore: 10, status: 'Enhanced', direction: 'North-East', observation: 'Divine vibration' },
-        { name: 'Living & Prana Lounge (E)', element: 'Air', score: 8.7, maxScore: 10, status: 'Balanced', direction: 'East', observation: 'High morning light' },
-        { name: 'Kitchen & Hearth (SE)', element: 'Fire', score: 7.9, maxScore: 10, status: 'Balanced', direction: 'South-East', observation: 'Agni compliant' },
-      ],
-      amenities: [
-        { icon: 'spa', name: 'Meditation Amphitheatre', description: 'North-East aligned sacred garden' },
-        { icon: 'pool', name: 'Infinity Pool', description: 'North-facing flowing water element' },
-        { icon: 'fitness_center', name: 'Wellness Gymnasium', description: 'South-West grounded health pavilion' },
-      ],
-      connectivity: [
-        { landmark: 'Metro Station', distance: '4 mins' },
-        { landmark: 'International Airport', distance: '20 mins' },
-      ],
-      reviews: [
-        { id: 'rev-1', author: 'Dr. Anand Joshi', role: 'Vastu Consultant', rating: 5, date: '2 days ago', comment: 'Exceptional alignment in Northeast Ishanya corner.' },
-      ],
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.hasClientSample && !b.hasClientSample) return -1;
+      if (!a.hasClientSample && b.hasClientSample) return 1;
+      return a.name.localeCompare(b.name);
     });
-    setIsModalOpen(true);
+  }, [discoveryProjects]);
+
+  // All unique locations in dataset
+  const locationsList = useMemo(() => {
+    const map = new Map<string, {
+      name: string;
+      city: string;
+      state: string;
+      projectsCount: number;
+      wingsCount: number;
+      flatsCount: number;
+      hasClientSample: boolean;
+    }>();
+
+    discoveryProjects.forEach((proj) => {
+      const key = `${proj.city}__${proj.locality}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.projectsCount += 1;
+        existing.wingsCount += proj.wings.length;
+        existing.flatsCount += proj.totalFlats;
+        if (proj.isClientSample) existing.hasClientSample = true;
+      } else {
+        map.set(key, {
+          name: proj.locality,
+          city: proj.city,
+          state: proj.state,
+          projectsCount: 1,
+          wingsCount: proj.wings.length,
+          flatsCount: proj.totalFlats,
+          hasClientSample: proj.isClientSample,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.hasClientSample && !b.hasClientSample) return -1;
+      if (!a.hasClientSample && b.hasClientSample) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [discoveryProjects]);
+
+  // All wings across projects
+  const wingsList = useMemo(() => {
+    const list: Array<{
+      id: string;
+      wingName: string;
+      projectName: string;
+      locality: string;
+      city: string;
+      flatsCount: number;
+      isSimulatedDemo: boolean;
+      isClientSample: boolean;
+    }> = [];
+
+    discoveryProjects.forEach((proj) => {
+      proj.wings.forEach((w) => {
+        list.push({
+          id: w.id,
+          wingName: w.name,
+          projectName: proj.name,
+          locality: proj.locality,
+          city: proj.city,
+          flatsCount: w.flats.length,
+          isSimulatedDemo: w.isSimulatedDemo || false,
+          isClientSample: proj.isClientSample,
+        });
+      });
+    });
+
+    return list;
+  }, [discoveryProjects]);
+
+  // Counts for summary overview cards
+  const totalCitiesCount = citiesList.length;
+  const totalLocationsCount = locationsList.length;
+  const totalProjectsCount = discoveryProjects.length;
+  const totalWingsCount = wingsList.length;
+  const totalFlatsCount = discoveryFlats.length;
+
+  // Breakdown: Client Sample vs Simulated Demo
+  const clientSampleFlatsCount = discoveryFlats.filter((f) => f.isClientSample).length;
+  const simulatedDemoFlatsCount = totalFlatsCount - clientSampleFlatsCount;
+
+  // --------------------------------------------------------------------------
+  // 2. FILTERED LISTS
+  // --------------------------------------------------------------------------
+
+  // Filtered Flats for the Flats tab
+  const filteredFlats = useMemo(() => {
+    return discoveryFlats.filter((flat) => {
+      // Search query (PP Code, Project, City, Wing)
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        flat.ppCode.toLowerCase().includes(q) ||
+        flat.projectName.toLowerCase().includes(q) ||
+        flat.city.toLowerCase().includes(q) ||
+        flat.locality.toLowerCase().includes(q) ||
+        flat.wing.toLowerCase().includes(q) ||
+        flat.bhk.toLowerCase().includes(q);
+
+      // Status filter
+      const matchesStatus =
+        selectedStatusFilter === 'All' || flat.vastuStatus === selectedStatusFilter;
+
+      // Project filter
+      const matchesProject =
+        selectedProjectFilter === 'All' || flat.projectName === selectedProjectFilter;
+
+      // City filter
+      const matchesCity =
+        selectedCityFilter === 'All' || flat.city.toLowerCase() === selectedCityFilter.toLowerCase();
+
+      // Wing filter
+      const matchesWing =
+        selectedWingFilter === 'All' || flat.wing === selectedWingFilter;
+
+      // Type filter (Client Sample vs Simulated)
+      const matchesType =
+        selectedTypeFilter === 'All' ||
+        (selectedTypeFilter === 'Sample' && flat.isClientSample) ||
+        (selectedTypeFilter === 'Simulated' && !flat.isClientSample);
+
+      return matchesSearch && matchesStatus && matchesProject && matchesCity && matchesWing && matchesType;
+    });
+  }, [
+    discoveryFlats,
+    searchQuery,
+    selectedStatusFilter,
+    selectedProjectFilter,
+    selectedCityFilter,
+    selectedWingFilter,
+    selectedTypeFilter,
+  ]);
+
+  // --------------------------------------------------------------------------
+  // 3. FLAT FORM ACTIONS (Add / Edit)
+  // --------------------------------------------------------------------------
+
+  const handleOpenAddModal = () => {
+    setEditingFlatId(null);
+    setFormCity('Mumbai');
+    setFormLocality('Andheri');
+    setFormProject('Godrej');
+    setFormWing('Wing A');
+    setFormBhk('2 BHK');
+    setFormPpCode('');
+    setFormVastuStatus('Aligned');
+    setFormSeriesNumber('7');
+    setFormError(null);
+    setIsFormOpen(true);
   };
 
-  // Handle City Change in Form
-  const handleFormCityChange = (newCity: string) => {
-    const autoState = getStateForCity(newCity);
-    const validLocalities = getLocalitiesForCity(newCity);
-    const chosenLocality = validLocalities.length > 0 ? validLocalities[0] : 'Prime Locality';
-    setFormData((prev) => ({
-      ...prev,
-      city: newCity,
-      state: autoState || prev.state,
-      locality: chosenLocality,
-      location: `${chosenLocality}, ${newCity}`,
-    }));
+  const handleOpenEditModal = (flat: DiscoveryFlat) => {
+    setEditingFlatId(flat.id);
+    setFormCity(flat.city);
+    setFormLocality(flat.locality);
+    setFormProject(flat.projectName);
+    setFormWing(flat.wing);
+    setFormBhk(flat.bhk);
+    setFormPpCode(flat.ppCode);
+    setFormVastuStatus(flat.vastuStatus);
+    setFormSeriesNumber(flat.seriesNumber);
+    setFormError(null);
+    setIsFormOpen(true);
   };
 
-  // Handle State Change in Form
-  const handleFormStateChange = (newState: string) => {
-    const citiesInState = getCitiesForState(newState);
-    const newCity = citiesInState[0] || 'Mumbai';
-    const validLocalities = getLocalitiesForCity(newCity);
-    const chosenLocality = validLocalities.length > 0 ? validLocalities[0] : 'Prime Locality';
-    setFormData((prev) => ({
-      ...prev,
-      state: newState,
-      city: newCity,
-      locality: chosenLocality,
-      location: `${chosenLocality}, ${newCity}`,
-    }));
+  // Explicit suggestion helper for demo PP Code (never generated without user click)
+  const handleSuggestDemoCode = () => {
+    const prefix = formProject.slice(0, 3).toUpperCase() || 'DEMO';
+    const randNum = Math.floor(100 + Math.random() * 900);
+    setFormPpCode(`${prefix}-${randNum}`);
   };
 
-  // Save Modal Changes
-  const handleSaveProperty = (e: React.FormEvent) => {
+  const handleSaveFlat = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.city) {
-      showToast('Please provide a title and city for the property');
+    setFormError(null);
+
+    // Validation 1: Required fields
+    if (!formCity.trim() || !formLocality.trim() || !formProject.trim() || !formWing.trim()) {
+      setFormError('City, Locality, Project, and Wing are required.');
+      return;
+    }
+    if (!formPpCode.trim()) {
+      setFormError('PP Code is required. Enter a code or click "Suggest Demo Code".');
+      return;
+    }
+    if (!formSeriesNumber.trim()) {
+      setFormError('Series Number is required.');
       return;
     }
 
-    const calculatedAvg = modalRadarData.avgScore;
-    const finalVastuStatus =
-      calculatedAvg >= 8.8
-        ? 'Inherently Aligned'
-        : calculatedAvg >= 7.8
-        ? 'Functionally Balanced'
-        : 'Remedy-Ready';
+    const cleanPpCode = formPpCode.trim().toUpperCase();
+    const cleanProject = formProject.trim();
 
-    const rawSlug = formData.slug || formData.title;
-    const cleanSlug = rawSlug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') ||
-      `prop-${Date.now()}`;
+    // Validation 2: Duplicate PP Code check within the same project
+    const duplicate = discoveryFlats.find(
+      (f) =>
+        f.projectName.toLowerCase() === cleanProject.toLowerCase() &&
+        f.ppCode.toUpperCase() === cleanPpCode &&
+        f.id !== editingFlatId
+    );
 
-    const effectiveLocality = formData.locality || 'Prime Locality';
-    const completedProperty: Property = {
-      ...(formData as Property),
-      slug: cleanSlug,
-      locality: effectiveLocality,
-      location: `${effectiveLocality}, ${formData.city}`,
-      vastuScore: calculatedAvg,
-      vastuStatus: finalVastuStatus,
-    };
-
-    if (editingPropertyId) {
-      updateProperty(editingPropertyId, completedProperty);
-      showToast(`Updated "${completedProperty.title}" successfully!`);
-    } else {
-      addProperty(completedProperty);
-      showToast(`Added "${completedProperty.title}" to catalog!`);
+    if (duplicate) {
+      setFormError(
+        `PP Code "${cleanPpCode}" is already in use for project "${cleanProject}". Each flat within a project must have a unique PP Code.`
+      );
+      return;
     }
 
-    setIsModalOpen(false);
+    if (editingFlatId) {
+      // Update existing flat
+      const existing = discoveryFlats.find((f) => f.id === editingFlatId);
+      updateDiscoveryFlat(editingFlatId, {
+        city: formCity.trim(),
+        locality: formLocality.trim(),
+        projectName: cleanProject,
+        wing: formWing.trim(),
+        bhk: formBhk,
+        ppCode: cleanPpCode,
+        vastuStatus: formVastuStatus,
+        seriesNumber: formSeriesNumber.trim(),
+      });
+      showToast(
+        existing?.isClientSample
+          ? `Updated client reference sample flat ${cleanPpCode}!`
+          : `Updated flat ${cleanPpCode} successfully!`
+      );
+    } else {
+      // Add new flat
+      const newFlat: DiscoveryFlat = {
+        id: `flat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        city: formCity.trim(),
+        locality: formLocality.trim(),
+        projectName: cleanProject,
+        wing: formWing.trim(),
+        bhk: formBhk,
+        ppCode: cleanPpCode,
+        vastuStatus: formVastuStatus,
+        seriesNumber: formSeriesNumber.trim(),
+        state: 'Maharashtra',
+        isClientSample: false, // Newly created admin entries are demo additions
+      };
+      addDiscoveryFlat(newFlat);
+    }
+
+    setIsFormOpen(false);
   };
 
-  // Save Studio Radar Scores
-  const handleSaveStudioScores = () => {
-    if (!studioProperty) return;
-    const updatedScore = studioRadarData.avgScore;
-    const updatedStatus =
-      updatedScore >= 8.8
-        ? 'Inherently Aligned'
-        : updatedScore >= 7.8
-        ? 'Functionally Balanced'
-        : 'Remedy-Ready';
+  // --------------------------------------------------------------------------
+  // 4. DELETE ACTIONS
+  // --------------------------------------------------------------------------
 
-    updateProperty(studioProperty.id, {
-      radarScores: studioScores,
-      vastuScore: updatedScore,
-      vastuStatus: updatedStatus,
-    });
-    showToast(`Saved 8-direction energy graph for "${studioProperty.title}" (Score: ${updatedScore}/10)!`);
+  const handleConfirmDelete = () => {
+    if (!deletingFlat) return;
+    deleteDiscoveryFlat(deletingFlat.id);
+    setDeletingFlat(null);
   };
 
-  // Filtered properties for admin table
-  const displayedProperties = useMemo(() => {
-    return properties.filter((p) => {
-      const matchSearch =
-        searchTerm === '' ||
-        p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.state.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchState = filterState === 'All' || p.state === filterState;
-      const matchType = filterType === 'All' || p.propertyType === filterType;
-      return matchSearch && matchState && matchType;
-    });
-  }, [properties, searchTerm, filterState, filterType]);
+  // --------------------------------------------------------------------------
+  // 5. RESET ACTIONS
+  // --------------------------------------------------------------------------
 
-  const featuredCount = properties.filter((p) => p.featured).length;
-  const avgPortfolioScore =
-    Math.round((properties.reduce((acc, p) => acc + p.vastuScore, 0) / properties.length) * 10) / 10;
+  const handleConfirmReset = () => {
+    resetDiscoveryToDefault();
+    setIsResetModalOpen(false);
+    showToast('Demonstration inventory restored to initial reference defaults (6 Godrej sample flats).');
+  };
+
+  // Editing target client sample check
+  const isEditingClientSample = useMemo(() => {
+    if (!editingFlatId) return false;
+    return discoveryFlats.some((f) => f.id === editingFlatId && f.isClientSample);
+  }, [editingFlatId, discoveryFlats]);
+
+  // Helper for rendering Vastu Status Badges
+  const renderVastuStatusBadge = (status: PublicVastuStatus) => {
+    switch (status) {
+      case 'Aligned':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#137333]"></span>
+            <span>Aligned</span>
+          </span>
+        );
+      case 'Balanced':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fef7e0] text-[#b06000] border border-[#feefc3]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#b06000]"></span>
+            <span>Balanced</span>
+          </span>
+        );
+      case 'Adaptable':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c5221f]"></span>
+            <span>Adaptable</span>
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfaf6] text-[#1b1c1a] font-sans pb-16">
-      {/* Top Admin Header Bar */}
-      <header className="bg-gradient-to-r from-[#3e1b0c] via-[#5d2809] to-[#7a3e1e] text-white shadow-lg sticky top-0 z-40 border-b border-[#a26039]">
-        <div className="max-w-7xl xl:max-w-screen-2xl 2xl:max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      {/* ==================================================================== */}
+      {/* TOP ADMIN HEADER BAR                                                 */}
+      {/* ==================================================================== */}
+      <header className="bg-gradient-to-r from-[#3e1b0c] via-[#5d2809] to-[#7a3e1e] text-white shadow-md sticky top-0 z-40 border-b border-[#a26039]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
           {/* Logo & Identity */}
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl bg-[#fdcd75] text-[#5d2809] flex items-center justify-center font-bold text-lg shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#fdcd75] text-[#5d2809] flex items-center justify-center font-bold text-lg shadow-2xs">
                 ॐ
               </div>
               <div>
@@ -388,1099 +417,1251 @@ export default function AdminDashboardPage() {
                   PragyaaProp.com<span className="text-white text-xs align-super ml-0.5">®</span>
                 </span>
                 <span className="text-[10px] tracking-widest uppercase font-semibold text-[#f8d49a] block">
-                  Super Admin Management Portal
+                  Property Inventory Administration
                 </span>
               </div>
             </Link>
 
-            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#10b981]/20 text-[#34d399] border border-[#10b981]/30">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
-              Live Database Connected
+            {/* Clear Demonstration Environment Badge */}
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#fdcd75]/20 text-[#ffdea7] border border-[#fdcd75]/30">
+              <span className="w-2 h-2 rounded-full bg-[#fdcd75] animate-pulse"></span>
+              Demo Mode • LocalStorage Sync
             </span>
           </div>
 
           {/* Top Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Add Flat CTA */}
             <button
               type="button"
-              onClick={handleAddNewClick}
-              className="bg-[#fdcd75] hover:bg-[#ffdea7] text-[#5d2809] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+              onClick={handleOpenAddModal}
+              className="bg-[#fdcd75] hover:bg-[#ffdea7] text-[#5d2809] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-2xs active:scale-95 transition cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">add_circle</span>
-              <span>Add Property</span>
+              <span>Add Flat</span>
             </button>
 
+            {/* Reset to Demo Data CTA */}
             <button
               type="button"
-              onClick={() => {
-                if (confirm('Are you sure you want to restore all properties to the original curated defaults?')) {
-                  resetToDefault();
-                }
-              }}
+              onClick={() => setIsResetModalOpen(true)}
               className="bg-white/10 hover:bg-white/20 text-white/90 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1 transition cursor-pointer"
-              title="Reset all properties to default catalog"
+              title="Reset inventory to original client sample and defaults"
             >
               <span className="material-symbols-outlined text-base">restore</span>
-              <span className="hidden sm:inline">Reset Defaults</span>
+              <span className="hidden sm:inline">Reset Demo Data</span>
             </button>
 
+            {/* View Public Discovery Link */}
             <Link
-              href="/"
-              target="_blank"
+              href="/properties"
               className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1 transition"
+              title="Open the public guided discovery journey"
             >
-              <span className="material-symbols-outlined text-base">open_in_new</span>
-              <span className="hidden sm:inline">View Live Site</span>
+              <span className="material-symbols-outlined text-base">explore</span>
+              <span className="hidden sm:inline">Public Discovery</span>
             </Link>
 
+            {/* Exit to Homepage */}
             <Link
               href="/"
-              className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/30 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1 transition"
+              className="bg-white/10 hover:bg-white/20 text-white/80 hover:text-white px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1 transition"
             >
               <span className="material-symbols-outlined text-base">logout</span>
-              <span>Exit</span>
+              <span className="hidden sm:inline">Exit</span>
             </Link>
           </div>
         </div>
 
-        {/* Admin Navigation Tabs */}
-        <div className="max-w-7xl xl:max-w-screen-2xl 2xl:max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto scrollbar-none pt-2 border-t border-white/10">
+        {/* ================================================================== */}
+        {/* HIERARCHY NAVIGATION TABS                                         */}
+        {/* ================================================================== */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto scrollbar-none pt-2 border-t border-white/10">
           <button
             type="button"
-            onClick={() => setActiveTab('catalog')}
+            onClick={() => setActiveTab('overview')}
             className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'catalog'
+              activeTab === 'overview'
+                ? 'border-[#fdcd75] text-[#fdcd75]'
+                : 'border-transparent text-white/70 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">dashboard</span>
+            <span>Dashboard Overview</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('cities')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'cities'
+                ? 'border-[#fdcd75] text-[#fdcd75]'
+                : 'border-transparent text-white/70 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">location_city</span>
+            <span>1. Cities ({totalCitiesCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('locations')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'locations'
+                ? 'border-[#fdcd75] text-[#fdcd75]'
+                : 'border-transparent text-white/70 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">pin_drop</span>
+            <span>2. Locations ({totalLocationsCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('projects')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'projects'
+                ? 'border-[#fdcd75] text-[#fdcd75]'
+                : 'border-transparent text-white/70 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">domain</span>
+            <span>3. Projects ({totalProjectsCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('wings')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'wings'
+                ? 'border-[#fdcd75] text-[#fdcd75]'
+                : 'border-transparent text-white/70 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">meeting_room</span>
+            <span>4. Wings ({totalWingsCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('flats')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'flats'
                 ? 'border-[#fdcd75] text-[#fdcd75]'
                 : 'border-transparent text-white/70 hover:text-white'
             }`}
           >
             <span className="material-symbols-outlined text-base">apartment</span>
-            <span>Properties & Live CMS ({properties.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('radarStudio')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'radarStudio'
-                ? 'border-[#fdcd75] text-[#fdcd75]'
-                : 'border-transparent text-white/70 hover:text-white'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">radar</span>
-            <span>Directional Radar Studio</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('seo')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'seo'
-                ? 'border-[#fdcd75] text-[#fdcd75]'
-                : 'border-transparent text-white/70 hover:text-white'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">search</span>
-            <span>SEO & Google SERP Preview</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('reports')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'reports'
-                ? 'border-[#fdcd75] text-[#fdcd75]'
-                : 'border-transparent text-white/70 hover:text-white'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-            <span>PDF Reports & Badges</span>
+            <span>5. Flats ({totalFlatsCount})</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Body */}
-      <main className="max-w-7xl xl:max-w-screen-2xl 2xl:max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        {/* KPI Metric Summary Strip */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-          <div className="bg-white rounded-2xl border border-[#e8dac8] p-4 shadow-xs flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[#faeee2] text-[#7a3e1e] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-2xl">holiday_village</span>
-            </div>
+      {/* ==================================================================== */}
+      {/* MAIN ADMIN WORKSPACE                                                 */}
+      {/* ==================================================================== */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6">
+        {/* SUMMARY CARDS (Ground truth counts from active inventory) */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wide">Total Properties</div>
-              <div className="text-2xl font-bold font-serif text-[#4a240c]">{properties.length} Active</div>
+              <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#4a240c]">
+                Hierarchy Inventory Dashboard
+              </h1>
+              <p className="text-xs text-[#53433c]">
+                Live management of City → Location → Project → Wing → Flat hierarchy
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-lg bg-[#ffdea7] text-[#5d2809] font-bold">
+                {clientSampleFlatsCount} Client Sample Flats
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-[#f0eae1] text-[#7a3e1e] font-semibold border border-[#ecd9c6]">
+                {simulatedDemoFlatsCount} Simulated Demo Flats
+              </span>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#e8dac8] p-4 shadow-xs flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-2xl">star</span>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wide">Featured on Home</div>
-              <div className="text-2xl font-bold font-serif text-amber-800">{featuredCount} Properties</div>
-            </div>
-          </div>
+          {/* 5 Summary Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Card 1: Cities */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('cities')}
+              className={`p-4 rounded-2xl border text-left transition hover:shadow-md cursor-pointer ${
+                activeTab === 'cities'
+                  ? 'bg-white border-[#7a3e1e] ring-2 ring-[#7a3e1e]/20'
+                  : 'bg-white border-[#ecd9c6] hover:border-[#7a3e1e]'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[#7a3e1e] mb-2">
+                <span className="material-symbols-outlined text-xl">location_city</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b]">Stage 1</span>
+              </div>
+              <div className="text-2xl font-serif font-bold text-[#4a240c]">{totalCitiesCount}</div>
+              <div className="text-xs font-bold text-[#53433c] mt-0.5">Total Cities</div>
+              <div className="text-[11px] text-[#86736b] mt-1">Mumbai (Sample Hub)</div>
+            </button>
 
-          <div className="bg-white rounded-2xl border border-[#e8dac8] p-4 shadow-xs flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-2xl">verified</span>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wide">Vastu Certification</div>
-              <div className="text-2xl font-bold font-serif text-emerald-700">100% Certified</div>
-            </div>
-          </div>
+            {/* Card 2: Locations */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('locations')}
+              className={`p-4 rounded-2xl border text-left transition hover:shadow-md cursor-pointer ${
+                activeTab === 'locations'
+                  ? 'bg-white border-[#7a3e1e] ring-2 ring-[#7a3e1e]/20'
+                  : 'bg-white border-[#ecd9c6] hover:border-[#7a3e1e]'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[#7a3e1e] mb-2">
+                <span className="material-symbols-outlined text-xl">pin_drop</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b]">Stage 2</span>
+              </div>
+              <div className="text-2xl font-serif font-bold text-[#4a240c]">{totalLocationsCount}</div>
+              <div className="text-xs font-bold text-[#53433c] mt-0.5">Total Locations</div>
+              <div className="text-[11px] text-[#86736b] mt-1">Andheri (Sample Locality)</div>
+            </button>
 
-          <div className="bg-white rounded-2xl border border-[#e8dac8] p-4 shadow-xs flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-2xl">speed</span>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wide">Avg Vastu Score</div>
-              <div className="text-2xl font-bold font-serif text-purple-900">{avgPortfolioScore} / 10</div>
-            </div>
+            {/* Card 3: Projects */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('projects')}
+              className={`p-4 rounded-2xl border text-left transition hover:shadow-md cursor-pointer ${
+                activeTab === 'projects'
+                  ? 'bg-white border-[#7a3e1e] ring-2 ring-[#7a3e1e]/20'
+                  : 'bg-white border-[#ecd9c6] hover:border-[#7a3e1e]'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[#7a3e1e] mb-2">
+                <span className="material-symbols-outlined text-xl">domain</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b]">Stage 3</span>
+              </div>
+              <div className="text-2xl font-serif font-bold text-[#4a240c]">{totalProjectsCount}</div>
+              <div className="text-xs font-bold text-[#53433c] mt-0.5">Total Projects</div>
+              <div className="text-[11px] text-[#86736b] mt-1">Godrej (Client Reference)</div>
+            </button>
+
+            {/* Card 4: Wings */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('wings')}
+              className={`p-4 rounded-2xl border text-left transition hover:shadow-md cursor-pointer ${
+                activeTab === 'wings'
+                  ? 'bg-white border-[#7a3e1e] ring-2 ring-[#7a3e1e]/20'
+                  : 'bg-white border-[#ecd9c6] hover:border-[#7a3e1e]'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[#7a3e1e] mb-2">
+                <span className="material-symbols-outlined text-xl">meeting_room</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b]">Stage 4</span>
+              </div>
+              <div className="text-2xl font-serif font-bold text-[#4a240c]">{totalWingsCount}</div>
+              <div className="text-xs font-bold text-[#53433c] mt-0.5">Total Wings</div>
+              <div className="text-[11px] text-[#86736b] mt-1">Wing A & Wing B</div>
+            </button>
+
+            {/* Card 5: Flats */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('flats')}
+              className={`p-4 rounded-2xl border text-left transition hover:shadow-md cursor-pointer col-span-2 sm:col-span-1 ${
+                activeTab === 'flats'
+                  ? 'bg-white border-[#7a3e1e] ring-2 ring-[#7a3e1e]/20'
+                  : 'bg-white border-[#ecd9c6] hover:border-[#7a3e1e]'
+              }`}
+            >
+              <div className="flex items-center justify-between text-[#7a3e1e] mb-2">
+                <span className="material-symbols-outlined text-xl">apartment</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b]">Stage 5</span>
+              </div>
+              <div className="text-2xl font-serif font-bold text-[#4a240c]">{totalFlatsCount}</div>
+              <div className="text-xs font-bold text-[#53433c] mt-0.5">Total Flats</div>
+              <div className="text-[11px] text-[#86736b] mt-1">{clientSampleFlatsCount} Client + {simulatedDemoFlatsCount} Demo</div>
+            </button>
           </div>
         </section>
 
-        {/* ======================================================== */}
-        {/* TAB 1: PROPERTIES CATALOG MANAGER                        */}
-        {/* ======================================================== */}
-        {activeTab === 'catalog' && (
-          <div className="space-y-4">
-            {/* Filter and Search Bar */}
-            <div className="bg-white rounded-2xl border border-[#e8dac8] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex-1 min-w-[240px] relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">
-                  search
-                </span>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search properties by title, city, or state..."
-                  className="w-full bg-[#fcfaf6] border border-[#e8dac8] rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                />
+        {/* ================================================================== */}
+        {/* TAB 1: DASHBOARD OVERVIEW DETAILS                                  */}
+        {/* ================================================================== */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#4a240c] flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#7a3e1e]">info</span>
+                Demonstration Architecture & Scope
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[#53433c] leading-relaxed">
+                <div className="p-4 rounded-2xl bg-[#faf6ee] border border-[#ecd9c6] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#137333]"></span>
+                    <h3 className="font-bold text-[#4a240c] text-sm">Client Reference Sample Dataset</h3>
+                  </div>
+                  <p>
+                    <strong>Location:</strong> Mumbai → Andheri → Godrej → Wing A
+                  </p>
+                  <p>
+                    Contains 6 client-supplied sample flats (<code>A001</code>, <code>FDDES</code>, <code>VVFTT</code>, <code>GGGLT</code>, <code>HJJYY</code>, <code>KKYI</code>).
+                  </p>
+                  <p>
+                    Each record has a verified Series Number (1–6) revealed only upon individual inspection. Zero invented pricing, carpet area, or numerical Vastu scores.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#faf6ee] border border-[#ecd9c6] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#7a3e1e]"></span>
+                    <h3 className="font-bold text-[#4a240c] text-sm">Simulated Demonstration Inventory</h3>
+                  </div>
+                  <p>
+                    <strong>Scope:</strong> Multi-city hierarchy for UI/UX testing
+                  </p>
+                  <p>
+                    Includes 18 retained demonstration projects mapped into Wing A (active demo flat) and Wing B (simulated empty state) across Mumbai, Pune, Bangalore, etc.
+                  </p>
+                  <p>
+                    Demonstrates how administrators can manage new inventory, edit Vastu statuses, and observe immediate sync in public discovery.
+                  </p>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                <select
-                  value={filterState}
-                  onChange={(e) => setFilterState(e.target.value)}
-                  className="bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 focus:outline-none"
-                >
-                  <option value="All">All States ({ALL_STATES.length})</option>
-                  {ALL_STATES.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3 py-2 text-xs font-semibold text-stone-700 focus:outline-none"
-                >
-                  <option value="All">All Typologies</option>
-                  <option value="Apartment">Apartment</option>
-                  <option value="Villa">Villa</option>
-                  <option value="Independent House">Independent House</option>
-                  <option value="Penthouse">Penthouse</option>
-                  <option value="Plot">Plot</option>
-                </select>
-
+              {/* Quick Actions Bar */}
+              <div className="pt-2 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={handleAddNewClick}
-                  className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                  onClick={handleOpenAddModal}
+                  className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 >
-                  <span className="material-symbols-outlined text-base">add</span>
-                  <span>New Property</span>
+                  <span className="material-symbols-outlined text-base">add_circle</span>
+                  <span>Add New Flat Record</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('flats')}
+                  className="bg-white hover:bg-[#faf6ee] border border-[#ecd9c6] text-[#5d2809] text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">table_view</span>
+                  <span>Manage All Flats ({totalFlatsCount})</span>
+                </button>
+                <Link
+                  href="/properties"
+                  className="bg-white hover:bg-[#faf6ee] border border-[#ecd9c6] text-[#5d2809] text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-base">open_in_new</span>
+                  <span>Open Public Discovery Journey</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB 2: CITIES MANAGEMENT                                          */}
+        {/* ================================================================== */}
+        {activeTab === 'cities' && (
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#4a240c]">
+                  Stage 1 — City Hierarchy
+                </h2>
+                <p className="text-xs text-[#53433c]">
+                  Cities available in active demonstration inventory ({citiesList.length})
+                </p>
               </div>
             </div>
 
-            {/* Properties Table & Cards */}
-            <div className="bg-white rounded-2xl border border-[#e8dac8] shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                  <thead>
-                    <tr className="bg-[#fbf7f0] border-b border-[#e8dac8] text-[#5d2809] font-bold text-[11px] uppercase tracking-wider">
-                      <th className="py-3 px-4">Property</th>
-                      <th className="py-3 px-4">Location</th>
-                      <th className="py-3 px-4">BHK & Type</th>
-                      <th className="py-3 px-4">Price</th>
-                      <th className="py-3 px-4 text-center">Vastu Score</th>
-                      <th className="py-3 px-4 text-center">Featured</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#eedecb] text-[#86736b] font-bold uppercase tracking-wider text-[11px] bg-[#faf6ee]">
+                    <th className="py-3 px-4">City</th>
+                    <th className="py-3 px-4">State</th>
+                    <th className="py-3 px-4">Locations</th>
+                    <th className="py-3 px-4">Projects</th>
+                    <th className="py-3 px-4">Wings</th>
+                    <th className="py-3 px-4">Total Flats</th>
+                    <th className="py-3 px-4">Sample Status</th>
+                    <th className="py-3 px-4 text-right">Drill Down</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3e7da]">
+                  {citiesList.map((city) => (
+                    <tr key={city.name} className="hover:bg-[#faf6ee] transition">
+                      <td className="py-3 px-4 font-bold text-[#4a240c] text-sm">{city.name}</td>
+                      <td className="py-3 px-4 text-[#53433c]">{city.state}</td>
+                      <td className="py-3 px-4 font-semibold text-[#7a3e1e]">{city.locationsCount.size}</td>
+                      <td className="py-3 px-4 font-semibold text-[#7a3e1e]">{city.projectsCount}</td>
+                      <td className="py-3 px-4 text-[#53433c]">{city.wingsCount}</td>
+                      <td className="py-3 px-4 font-bold text-[#4a240c]">{city.flatsCount}</td>
+                      <td className="py-3 px-4">
+                        {city.hasClientSample ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdea7] text-[#5d2809]">
+                            Client Sample Hub
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f0eae1] text-[#7a3e1e]">
+                            Simulated Demo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCityFilter(city.name);
+                            setActiveTab('locations');
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#faf6ee] hover:bg-[#7a3e1e] text-[#5d2809] hover:text-white font-bold transition text-xs border border-[#ecd9c6] cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <span>Explore Locations</span>
+                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f2e6d6]">
-                    {displayedProperties.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-12 text-stone-500">
-                          No properties match your filter criteria.
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB 3: LOCATIONS MANAGEMENT                                       */}
+        {/* ================================================================== */}
+        {activeTab === 'locations' && (
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#4a240c]">
+                  Stage 2 — Location Hierarchy
+                </h2>
+                <p className="text-xs text-[#53433c]">
+                  Localities grouped by City ({locationsList.length})
+                </p>
+              </div>
+
+              {/* City Filter */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[#86736b] font-bold">Filter City:</span>
+                <select
+                  value={selectedCityFilter}
+                  onChange={(e) => setSelectedCityFilter(e.target.value)}
+                  className="bg-[#faf6ee] border border-[#ecd9c6] text-[#4a240c] font-semibold rounded-xl px-3 py-1.5 cursor-pointer"
+                >
+                  <option value="All">All Cities</option>
+                  {citiesList.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#eedecb] text-[#86736b] font-bold uppercase tracking-wider text-[11px] bg-[#faf6ee]">
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">City</th>
+                    <th className="py-3 px-4">Projects</th>
+                    <th className="py-3 px-4">Total Flats</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Drill Down</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3e7da]">
+                  {locationsList
+                    .filter(
+                      (loc) =>
+                        selectedCityFilter === 'All' ||
+                        loc.city.toLowerCase() === selectedCityFilter.toLowerCase()
+                    )
+                    .map((loc) => (
+                      <tr key={`${loc.city}-${loc.name}`} className="hover:bg-[#faf6ee] transition">
+                        <td className="py-3 px-4 font-bold text-[#4a240c] text-sm">{loc.name}</td>
+                        <td className="py-3 px-4 text-[#53433c]">{loc.city}</td>
+                        <td className="py-3 px-4 font-semibold text-[#7a3e1e]">{loc.projectsCount}</td>
+                        <td className="py-3 px-4 font-bold text-[#4a240c]">{loc.flatsCount}</td>
+                        <td className="py-3 px-4">
+                          {loc.hasClientSample ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdea7] text-[#5d2809]">
+                              Client Sample Locality
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f0eae1] text-[#7a3e1e]">
+                              Simulated Demo
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCityFilter(loc.city);
+                              setSelectedLocalityFilter(loc.name);
+                              setActiveTab('projects');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-[#faf6ee] hover:bg-[#7a3e1e] text-[#5d2809] hover:text-white font-bold transition text-xs border border-[#ecd9c6] cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <span>Explore Projects</span>
+                            <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                          </button>
                         </td>
                       </tr>
-                    ) : (
-                      displayedProperties.map((prop) => (
-                        <tr key={prop.id} className="hover:bg-[#fdfaf5] transition-colors">
-                          {/* Property Info + Thumbnail */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={prop.heroImage}
-                                alt={prop.title}
-                                className="w-14 h-12 object-cover rounded-lg border border-[#e8dac8] shrink-0"
-                              />
-                              <div>
-                                <h4 className="font-bold text-[#4a240c] font-serif leading-tight">{prop.title}</h4>
-                                <span className="text-[11px] text-stone-500">{prop.facing} Facing • {prop.sqft}</span>
-                              </div>
-                            </div>
-                          </td>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-                          {/* Location */}
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-stone-800">{prop.city}</div>
-                            <div className="text-[11px] text-stone-500">{prop.state}</div>
-                          </td>
+        {/* ================================================================== */}
+        {/* TAB 4: PROJECTS MANAGEMENT                                        */}
+        {/* ================================================================== */}
+        {activeTab === 'projects' && (
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#4a240c]">
+                  Stage 3 — Projects Hierarchy
+                </h2>
+                <p className="text-xs text-[#53433c]">
+                  Residential developments and complexes ({discoveryProjects.length})
+                </p>
+              </div>
 
-                          {/* BHK & Type */}
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-stone-800">{prop.bhk}</div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f4ebe0] text-[#7a3e1e]">
-                              {prop.propertyType}
+              {/* Location Filter */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[#86736b] font-bold">Filter City:</span>
+                <select
+                  value={selectedCityFilter}
+                  onChange={(e) => setSelectedCityFilter(e.target.value)}
+                  className="bg-[#faf6ee] border border-[#ecd9c6] text-[#4a240c] font-semibold rounded-xl px-3 py-1.5 cursor-pointer"
+                >
+                  <option value="All">All Cities</option>
+                  {citiesList.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#eedecb] text-[#86736b] font-bold uppercase tracking-wider text-[11px] bg-[#faf6ee]">
+                    <th className="py-3 px-4">Project</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">City</th>
+                    <th className="py-3 px-4">Wings</th>
+                    <th className="py-3 px-4">Total Flats</th>
+                    <th className="py-3 px-4">Dataset Status</th>
+                    <th className="py-3 px-4 text-right">Drill Down</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3e7da]">
+                  {discoveryProjects
+                    .filter(
+                      (p) =>
+                        (selectedCityFilter === 'All' ||
+                          p.city.toLowerCase() === selectedCityFilter.toLowerCase()) &&
+                        (selectedLocalityFilter === 'All' ||
+                          p.locality.toLowerCase() === selectedLocalityFilter.toLowerCase())
+                    )
+                    .map((proj) => (
+                      <tr key={proj.id} className="hover:bg-[#faf6ee] transition">
+                        <td className="py-3 px-4 font-bold text-[#4a240c] text-sm">
+                          {proj.name}
+                        </td>
+                        <td className="py-3 px-4 text-[#53433c]">{proj.locality}</td>
+                        <td className="py-3 px-4 text-[#53433c]">{proj.city}</td>
+                        <td className="py-3 px-4 font-semibold text-[#7a3e1e]">{proj.wings.length}</td>
+                        <td className="py-3 px-4 font-bold text-[#4a240c]">{proj.totalFlats}</td>
+                        <td className="py-3 px-4">
+                          {proj.isClientSample ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdea7] text-[#5d2809]">
+                              Client Reference Project
                             </span>
-                          </td>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f0eae1] text-[#7a3e1e]">
+                              Simulated Demo
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProjectFilter(proj.name);
+                              setActiveTab('wings');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-[#faf6ee] hover:bg-[#7a3e1e] text-[#5d2809] hover:text-white font-bold transition text-xs border border-[#ecd9c6] cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <span>Explore Wings</span>
+                            <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-                          {/* Price */}
-                          <td className="py-3 px-4 font-bold text-[#5d2809] font-serif">{prop.price}</td>
+        {/* ================================================================== */}
+        {/* TAB 5: WINGS MANAGEMENT                                           */}
+        {/* ================================================================== */}
+        {activeTab === 'wings' && (
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#4a240c]">
+                  Stage 4 — Wings Hierarchy
+                </h2>
+                <p className="text-xs text-[#53433c]">
+                  Wings cataloged across projects ({wingsList.length})
+                </p>
+              </div>
 
-                          {/* Vastu Score */}
-                          <td className="py-3 px-4 text-center">
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <span>{prop.vastuScore}</span>
-                              <span className="text-[10px] text-emerald-600">/ 10</span>
-                            </div>
-                            <div className="text-[10px] text-stone-500 mt-0.5">{prop.vastuStatus}</div>
-                          </td>
+              {/* Project Filter */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[#86736b] font-bold">Filter Project:</span>
+                <select
+                  value={selectedProjectFilter}
+                  onChange={(e) => setSelectedProjectFilter(e.target.value)}
+                  className="bg-[#faf6ee] border border-[#ecd9c6] text-[#4a240c] font-semibold rounded-xl px-3 py-1.5 cursor-pointer"
+                >
+                  <option value="All">All Projects</option>
+                  {discoveryProjects.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name} ({p.locality})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-                          {/* Featured Switch */}
-                          <td className="py-3 px-4 text-center">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#eedecb] text-[#86736b] font-bold uppercase tracking-wider text-[11px] bg-[#faf6ee]">
+                    <th className="py-3 px-4">Wing</th>
+                    <th className="py-3 px-4">Project</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">City</th>
+                    <th className="py-3 px-4">Flats</th>
+                    <th className="py-3 px-4">Wing Status</th>
+                    <th className="py-3 px-4 text-right">Drill Down</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3e7da]">
+                  {wingsList
+                    .filter(
+                      (w) =>
+                        selectedProjectFilter === 'All' ||
+                        w.projectName.toLowerCase() === selectedProjectFilter.toLowerCase()
+                    )
+                    .map((wing) => (
+                      <tr key={wing.id} className="hover:bg-[#faf6ee] transition">
+                        <td className="py-3 px-4 font-bold text-[#4a240c] text-sm">{wing.wingName}</td>
+                        <td className="py-3 px-4 font-semibold text-[#5d2809]">{wing.projectName}</td>
+                        <td className="py-3 px-4 text-[#53433c]">{wing.locality}</td>
+                        <td className="py-3 px-4 text-[#53433c]">{wing.city}</td>
+                        <td className="py-3 px-4 font-bold text-[#4a240c]">{wing.flatsCount}</td>
+                        <td className="py-3 px-4">
+                          {wing.isSimulatedDemo ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f0eae1] text-[#86736b] border border-dashed border-[#dfceba]">
+                              Simulated Empty State (0 Flats)
+                            </span>
+                          ) : wing.isClientSample ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdea7] text-[#5d2809]">
+                              Active Sample Wing
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e6f4ea] text-[#137333]">
+                              Active Demo Wing
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProjectFilter(wing.projectName);
+                              setSelectedWingFilter(wing.wingName);
+                              setActiveTab('flats');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-[#faf6ee] hover:bg-[#7a3e1e] text-[#5d2809] hover:text-white font-bold transition text-xs border border-[#ecd9c6] cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <span>View Flats</span>
+                            <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB 6: FLATS INVENTORY MANAGEMENT (Core Admin Workflow)            */}
+        {/* ================================================================== */}
+        {activeTab === 'flats' && (
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] p-6 space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#4a240c]">
+                  Stage 5 — Flats Inventory Management
+                </h2>
+                <p className="text-xs text-[#53433c]">
+                  Manage individual PP Codes, Configurations, Vastu Assessments, and Series Numbers
+                </p>
+              </div>
+
+              {/* Add Flat CTA */}
+              <button
+                type="button"
+                onClick={handleOpenAddModal}
+                className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <span className="material-symbols-outlined text-base">add_circle</span>
+                <span>Add Demonstration Flat</span>
+              </button>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-[#faf6ee] p-4 rounded-2xl border border-[#ecd9c6] space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+                {/* Search Input */}
+                <div className="lg:col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#86736b] mb-1">
+                    Search Flats
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-base text-[#86736b]">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Search PP Code, Project, City, Wing..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white border border-[#dfceba] rounded-xl pl-9 pr-3 py-2 text-xs text-[#4a240c] placeholder:text-[#86736b] focus:outline-hidden focus:border-[#7a3e1e]"
+                    />
+                  </div>
+                </div>
+
+                {/* Vastu Status Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#86736b] mb-1">
+                    Vastu Status
+                  </label>
+                  <select
+                    value={selectedStatusFilter}
+                    onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                    className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] font-semibold cursor-pointer"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Aligned">Aligned</option>
+                    <option value="Balanced">Balanced</option>
+                    <option value="Adaptable">Adaptable</option>
+                  </select>
+                </div>
+
+                {/* Project Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#86736b] mb-1">
+                    Project
+                  </label>
+                  <select
+                    value={selectedProjectFilter}
+                    onChange={(e) => setSelectedProjectFilter(e.target.value)}
+                    className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] font-semibold cursor-pointer"
+                  >
+                    <option value="All">All Projects</option>
+                    {discoveryProjects.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Inventory Type Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#86736b] mb-1">
+                    Dataset Type
+                  </label>
+                  <select
+                    value={selectedTypeFilter}
+                    onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                    className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] font-semibold cursor-pointer"
+                  >
+                    <option value="All">All Records</option>
+                    <option value="Sample">Client Reference Sample (Godrej)</option>
+                    <option value="Simulated">Simulated Demo Records</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Active Filter Indicators */}
+              <div className="flex items-center justify-between text-xs text-[#53433c] pt-1">
+                <span>
+                  Showing <strong>{filteredFlats.length}</strong> of <strong>{discoveryFlats.length}</strong> flats
+                </span>
+                {(searchQuery ||
+                  selectedStatusFilter !== 'All' ||
+                  selectedProjectFilter !== 'All' ||
+                  selectedCityFilter !== 'All' ||
+                  selectedWingFilter !== 'All' ||
+                  selectedTypeFilter !== 'All') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedStatusFilter('All');
+                      setSelectedProjectFilter('All');
+                      setSelectedCityFilter('All');
+                      setSelectedWingFilter('All');
+                      setSelectedTypeFilter('All');
+                    }}
+                    className="text-[#7a3e1e] hover:underline font-bold text-[11px] cursor-pointer"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Flats Data Table */}
+            <div className="overflow-x-auto border border-[#eedecb] rounded-2xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-[#eedecb] text-[#86736b] font-bold uppercase tracking-wider text-[11px] bg-[#faf6ee]">
+                    <th className="py-3 px-4">PP Code</th>
+                    <th className="py-3 px-4">Config</th>
+                    <th className="py-3 px-4">Vastu Status</th>
+                    <th className="py-3 px-4">Series</th>
+                    <th className="py-3 px-4">Project & Wing</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Inventory Type</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3e7da]">
+                  {filteredFlats.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-[#86736b]">
+                        No flats match the selected search or filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredFlats.map((flat) => (
+                      <tr key={flat.id} className="hover:bg-[#faf6ee] transition">
+                        {/* PP Code */}
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-xs bg-[#4a240c] text-white px-2 py-0.5 rounded shadow-2xs">
+                            {flat.ppCode}
+                          </span>
+                        </td>
+
+                        {/* Configuration */}
+                        <td className="py-3 px-4 font-bold text-[#4a240c]">{flat.bhk}</td>
+
+                        {/* Vastu Status Badge */}
+                        <td className="py-3 px-4">{renderVastuStatusBadge(flat.vastuStatus)}</td>
+
+                        {/* Series Number */}
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-[#7a3e1e] bg-[#ffdea7]/40 px-2 py-0.5 rounded border border-[#ffdea7]">
+                            Series {flat.seriesNumber}
+                          </span>
+                        </td>
+
+                        {/* Project & Wing */}
+                        <td className="py-3 px-4">
+                          <span className="font-semibold text-[#4a240c] block">{flat.projectName}</span>
+                          <span className="text-[11px] text-[#86736b]">{flat.wing}</span>
+                        </td>
+
+                        {/* Location */}
+                        <td className="py-3 px-4 text-[#53433c]">
+                          {flat.locality}, {flat.city}
+                        </td>
+
+                        {/* Inventory Type */}
+                        <td className="py-3 px-4">
+                          {flat.isClientSample ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ffdea7] text-[#5d2809]">
+                              Client Reference Sample
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#f0eae1] text-[#7a3e1e]">
+                              Simulated Demo
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => toggleFeatured(prop.id)}
-                              className={`p-1.5 rounded-lg transition cursor-pointer ${
-                                prop.featured
-                                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                  : 'bg-stone-100 text-stone-400 hover:bg-stone-200'
-                              }`}
-                              title={prop.featured ? 'Featured on Home (Click to unfeature)' : 'Mark as Featured on Home'}
+                              onClick={() => handleOpenEditModal(flat)}
+                              className="px-2.5 py-1 rounded-lg bg-[#faf6ee] hover:bg-[#7a3e1e] text-[#5d2809] hover:text-white font-bold transition text-xs border border-[#ecd9c6] cursor-pointer inline-flex items-center gap-1"
+                              title="Edit Flat Details"
                             >
-                              <span className="material-symbols-outlined text-lg">
-                                {prop.featured ? 'star' : 'star_border'}
-                              </span>
+                              <span className="material-symbols-outlined text-xs">edit</span>
+                              <span>Edit</span>
                             </button>
-                          </td>
 
-                          {/* Action Buttons */}
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Link
-                                href={`/properties/${prop.slug}`}
-                                target="_blank"
-                                className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition"
-                                title="Preview Live Property Page"
-                              >
-                                <span className="material-symbols-outlined text-base">visibility</span>
-                              </Link>
-
-                              <button
-                                type="button"
-                                onClick={() => handleEditClick(prop)}
-                                className="p-1.5 rounded-lg bg-[#faeee2] hover:bg-[#eedfc9] text-[#7a3e1e] transition cursor-pointer font-semibold"
-                                title="Edit Property, Media & Radar Graph"
-                              >
-                                <span className="material-symbols-outlined text-base">edit</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete "${prop.title}"?`)) {
-                                    deleteProperty(prop.id);
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer"
-                                title="Delete Property"
-                              >
-                                <span className="material-symbols-outlined text-base">delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 2: DIRECTIONAL ENERGY & RADAR GRAPH STUDIO           */}
-        {/* ======================================================== */}
-        {activeTab === 'radarStudio' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Sliders for 8 Directions */}
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-[#e8dac8] p-5 sm:p-6 shadow-xs space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0e3d3] pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-[#5d2809] font-serif">
-                    8-Direction Energy Calibration Studio
-                  </h3>
-                  <p className="text-xs text-stone-500">
-                    Adjust directional energy levels. The live SVG radar graph and overall Vastu score update instantly.
-                  </p>
-                </div>
-
-                {/* Property selector */}
-                <select
-                  value={studioPropertyId}
-                  onChange={(e) => handleStudioPropertyChange(e.target.value)}
-                  className="bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3 py-1.5 text-xs font-bold text-[#5d2809] focus:outline-none"
-                >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title} ({p.city})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 8 Direction Sliders */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {studioRadarData.points.map((pt) => (
-                  <div key={pt.key} className="bg-[#fcfaf6] border border-[#eedecb] rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-stone-800">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-md bg-[#faeee2] text-[#7a3e1e] flex items-center justify-center text-[10px]">
-                          {pt.label}
-                        </span>
-                        <span>{pt.full}</span>
-                      </span>
-                      <span className="text-emerald-700 font-mono text-sm">{pt.val} / 10</span>
-                    </div>
-
-                    <input
-                      type="range"
-                      min="4.0"
-                      max="10.0"
-                      step="0.1"
-                      value={studioScores[pt.key] ?? 8.0}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        setStudioScores((prev) => ({ ...prev, [pt.key]: val }));
-                      }}
-                      className="w-full accent-[#7a3e1e] cursor-pointer"
-                    />
-
-                    <div className="flex justify-between text-[10px] text-stone-400">
-                      <span>Low (Remedy Needed)</span>
-                      <span>10.0 (Supreme)</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f0e3d3]">
-                <button
-                  type="button"
-                  onClick={handleSaveStudioScores}
-                  className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">save</span>
-                  <span>Save Energy Graph to Website</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column: Live SVG Radar Chart Preview */}
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-[#e8dac8] p-5 sm:p-6 shadow-xs space-y-4 text-center">
-              <div>
-                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">
-                  Live Visual Preview
-                </span>
-                <h4 className="text-lg font-bold font-serif text-[#4a240c] mt-0.5">
-                  {studioProperty?.title || 'Selected Property'}
-                </h4>
-              </div>
-
-              {/* Dynamic SVG Radar Chart */}
-              <div className="relative w-64 h-64 mx-auto my-2 flex items-center justify-center bg-[#fdfbf7] rounded-full border border-[#eedecb] p-3 shadow-inner">
-                <svg className="w-full h-full" viewBox="0 0 200 200">
-                  <circle cx="100" cy="100" fill="none" r="70" stroke="#e8ded2" strokeWidth="1"></circle>
-                  <circle cx="100" cy="100" fill="none" r="50" stroke="#efe7dc" strokeWidth="1"></circle>
-                  <circle cx="100" cy="100" fill="none" r="30" stroke="#f4eee4" strokeWidth="1"></circle>
-                  <line stroke="#e2d6c5" strokeWidth="0.75" x1="100" x2="100" y1="20" y2="180"></line>
-                  <line stroke="#e2d6c5" strokeWidth="0.75" x1="20" x2="180" y1="100" y2="100"></line>
-                  <line stroke="#e2d6c5" strokeWidth="0.75" x1="43" x2="157" y1="43" y2="157"></line>
-                  <line stroke="#e2d6c5" strokeWidth="0.75" x1="43" x2="157" y1="157" y2="43"></line>
-
-                  {/* Dynamic Polygon */}
-                  <polygon
-                    fill="#34d399"
-                    fillOpacity="0.32"
-                    points={studioRadarData.pointsStr}
-                    stroke="#059669"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  ></polygon>
-
-                  {/* Points on radar */}
-                  {studioRadarData.points.map((pt) => (
-                    <circle
-                      key={pt.key}
-                      cx={pt.x}
-                      cy={pt.y}
-                      fill={pt.val < 7.5 ? '#d97706' : '#059669'}
-                      r="3.2"
-                    />
-                  ))}
-
-                  {/* Direction Labels */}
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="9" fontWeight="bold" x="96" y="14">N</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="8" fontWeight="bold" x="156" y="44">NE</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="9" fontWeight="bold" x="184" y="103">E</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="8" fontWeight="bold" x="154" y="162">SE</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="9" fontWeight="bold" x="97" y="195">S</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="8" fontWeight="bold" x="32" y="162">SW</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="9" fontWeight="bold" x="14" y="103">W</text>
-                  <text fill="#374151" fontFamily="sans-serif" fontSize="8" fontWeight="bold" x="34" y="44">NW</text>
-                </svg>
-              </div>
-
-              {/* Calculated Composite Score */}
-              <div className="bg-[#fcf7ee] border border-[#f0dfcc] rounded-xl p-3.5 space-y-1">
-                <div className="text-xs font-semibold text-stone-600">Calculated Composite Vastu Score</div>
-                <div className="text-3xl font-black font-serif text-[#5d2809]">
-                  {studioRadarData.avgScore} <span className="text-sm font-bold text-stone-500">/ 10</span>
-                </div>
-                <div className="inline-block px-3 py-0.5 rounded-full text-xs font-bold bg-[#ffdea7] text-[#5d2809]">
-                  {studioRadarData.avgScore >= 8.8
-                    ? 'Inherently Aligned'
-                    : studioRadarData.avgScore >= 7.8
-                    ? 'Functionally Balanced'
-                    : 'Remedy-Ready'}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 3: SEO & SEARCH ENGINE PREVIEW                       */}
-        {/* ======================================================== */}
-        {activeTab === 'seo' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left: SEO Inputs & Character Counters */}
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-[#e8dac8] p-5 sm:p-6 shadow-xs space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0e3d3] pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-[#5d2809] font-serif">
-                    SEO & Meta Tags Configuration
-                  </h3>
-                  <p className="text-xs text-stone-500">
-                    Control Google search appearances, OpenGraph social snippets, and JSON-LD schema.
-                  </p>
-                </div>
-
-                <select
-                  value={seoPropertyId}
-                  onChange={(e) => handleSeoPropertyChange(e.target.value)}
-                  className="bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3 py-1.5 text-xs font-bold text-[#5d2809] focus:outline-none"
-                >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Meta Title Input */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <label className="font-bold text-stone-800">Meta Title</label>
-                  <span
-                    className={`font-mono text-[11px] font-bold ${
-                      seoTitle.length > 60 ? 'text-red-600' : seoTitle.length >= 45 ? 'text-emerald-700' : 'text-amber-600'
-                    }`}
-                  >
-                    {seoTitle.length} / 60 chars {seoTitle.length > 60 ? '(Too Long)' : '(Optimal: 50-60)'}
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  value={seoTitle}
-                  onChange={(e) => setSeoTitle(e.target.value)}
-                  className="w-full bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                />
-              </div>
-
-              {/* Meta Description Input */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <label className="font-bold text-stone-800">Meta Description</label>
-                  <span
-                    className={`font-mono text-[11px] font-bold ${
-                      seoDesc.length > 160 ? 'text-red-600' : seoDesc.length >= 120 ? 'text-emerald-700' : 'text-amber-600'
-                    }`}
-                  >
-                    {seoDesc.length} / 160 chars {seoDesc.length > 160 ? '(Too Long)' : '(Optimal: 140-160)'}
-                  </span>
-                </div>
-                <textarea
-                  rows={3}
-                  value={seoDesc}
-                  onChange={(e) => setSeoDesc(e.target.value)}
-                  className="w-full bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none resize-none"
-                />
-              </div>
-
-              {/* Focus Keywords */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-stone-800">Focus SEO Keywords (Comma Separated)</label>
-                <input
-                  type="text"
-                  value={seoKeywords}
-                  onChange={(e) => setSeoKeywords(e.target.value)}
-                  className="w-full bg-[#fcfaf6] border border-[#e8dac8] rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                />
-              </div>
-
-              {/* SEO Checklist Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 text-xs font-semibold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base text-emerald-600">check_circle</span>
-                  <span>Canonical Tag Set</span>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 text-xs font-semibold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base text-emerald-600">check_circle</span>
-                  <span>JSON-LD Schema Valid</span>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 text-xs font-semibold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base text-emerald-600">check_circle</span>
-                  <span>Robots: Index, Follow</span>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => showToast('SEO tags and metadata verified & updated!')}
-                  className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs active:scale-95 transition cursor-pointer"
-                >
-                  Verify & Apply SEO Tags
-                </button>
-              </div>
-            </div>
-
-            {/* Right: Live Google Search Result & OpenGraph Previews */}
-            <div className="lg:col-span-5 space-y-5">
-              {/* Google SERP Snippet Preview */}
-              <div className="bg-white rounded-2xl border border-[#e8dac8] p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Google Search Live Snippet</span>
-                </div>
-
-                {/* Google Snippet Card */}
-                <div className="bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-3.5 space-y-1 font-sans text-left">
-                  <div className="flex items-center gap-1.5 text-xs text-[#202124]">
-                    <div className="w-4 h-4 rounded-full bg-[#7a3e1e] text-[9px] text-white flex items-center justify-center font-bold">
-                      P
-                    </div>
-                    <span className="font-medium">PragyaaProp.com</span>
-                    <span className="text-stone-400">›</span>
-                    <span className="text-stone-600 truncate">properties › {seoProperty?.slug}</span>
-                  </div>
-
-                  <h4 className="text-base sm:text-lg text-[#1a0dab] hover:underline font-medium cursor-pointer line-clamp-1">
-                    {seoTitle || 'Property Title | PragyaaProp'}
-                  </h4>
-
-                  <p className="text-xs text-[#4d5156] leading-relaxed line-clamp-2">
-                    {seoDesc || 'Comprehensive Vastu audit and property insights for luxury Indian real estate.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Social Sharing OpenGraph Card */}
-              <div className="bg-white rounded-2xl border border-[#e8dac8] p-5 shadow-xs space-y-3">
-                <div className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base">share</span>
-                  <span>Social Share Preview (WhatsApp / Twitter)</span>
-                </div>
-
-                <div className="border border-[#dadce0] rounded-xl overflow-hidden bg-white shadow-xs">
-                  <img
-                    src={seoProperty?.heroImage}
-                    alt="Social Preview"
-                    className="w-full h-36 object-cover"
-                  />
-                  <div className="p-3 bg-[#fdfaf6] space-y-1 text-left">
-                    <span className="text-[10px] uppercase font-bold text-stone-500 tracking-wider">
-                      pragyaaprop.com
-                    </span>
-                    <h5 className="text-xs font-bold text-stone-900 font-serif line-clamp-1">{seoTitle}</h5>
-                    <p className="text-[11px] text-stone-600 line-clamp-2">{seoDesc}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 4: PDF REPORTS & VERIFICATION BADGES                 */}
-        {/* ======================================================== */}
-        {activeTab === 'reports' && (
-          <div className="bg-white rounded-2xl border border-[#e8dac8] p-5 sm:p-6 shadow-xs space-y-6">
-            <div>
-              <h3 className="text-base font-bold text-[#5d2809] font-serif">
-                Vastu Audit PDF Engine & Certification Authority
-              </h3>
-              <p className="text-xs text-stone-500">
-                Manage downloadable 16-zone architectural reports, RERA badges, and Astrologer endorsements.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {properties.slice(0, 8).map((prop) => (
-                <div
-                  key={prop.id}
-                  className="bg-[#fcfaf6] border border-[#eedecb] rounded-xl p-4 flex items-center justify-between gap-3 shadow-2xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center shrink-0 border border-red-200">
-                      <span className="material-symbols-outlined text-xl">picture_as_pdf</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#5d2809] font-serif">{prop.title}</h4>
-                      <p className="text-[11px] text-stone-500">RERA: {prop.reraId} • 16-Zone Certified</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => showToast(`Generated fresh 16-zone audit PDF for ${prop.title}`)}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#faeee2] hover:bg-[#eedfc9] text-[#7a3e1e] text-xs font-bold transition cursor-pointer"
-                    >
-                      Audit PDF
-                    </button>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                      Active
-                    </span>
-                  </div>
-                </div>
-              ))}
+                            <button
+                              type="button"
+                              onClick={() => setDeletingFlat(flat)}
+                              className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-600 text-red-700 hover:text-white font-bold transition text-xs border border-red-200 cursor-pointer inline-flex items-center"
+                              title="Delete Flat"
+                            >
+                              <span className="material-symbols-outlined text-xs">delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
       </main>
 
-      {/* ======================================================== */}
-      {/* ADD / EDIT PROPERTY MODAL                                */}
-      {/* ======================================================== */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#fcfaf6] rounded-3xl border border-[#d8c2b9] shadow-2xl max-w-4xl w-full p-6 sm:p-8 relative my-8 max-h-[90vh] overflow-y-auto">
+      {/* ==================================================================== */}
+      {/* ADD / EDIT FLAT MODAL                                                */}
+      {/* ==================================================================== */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] shadow-2xl max-w-xl w-full overflow-hidden my-8">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#e8dac8] pb-4 mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#faeee2] text-[#7a3e1e] flex items-center justify-center font-bold">
-                  <span className="material-symbols-outlined text-xl">
-                    {editingPropertyId ? 'edit_note' : 'add_business'}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold font-serif text-[#5d2809]">
-                    {editingPropertyId ? 'Edit Property & Vastu Config' : 'Add New Vedic Property'}
-                  </h3>
-                  <p className="text-xs text-stone-500">
-                    Changes sync in real-time to the public website, search filters, and detail pages.
-                  </p>
-                </div>
+            <div className="px-6 py-4 bg-[#fbf8f3] border-b border-[#ecd9c6] flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-serif font-bold text-[#4a240c]">
+                  {editingFlatId ? 'Edit Flat Record' : 'Add Demonstration Flat'}
+                </h3>
+                <p className="text-[11px] text-[#86736b]">
+                  {editingFlatId
+                    ? 'Update flat details and Vastu status'
+                    : 'Create a new demonstration flat in the property hierarchy'}
+                </p>
               </div>
-
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#eae8e4] hover:bg-[#e4e2de] flex items-center justify-center text-[#53433c] transition-colors cursor-pointer"
+                onClick={() => setIsFormOpen(false)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-[#f3ede3] text-[#5d2809] flex items-center justify-center transition border border-[#ecd9c6] cursor-pointer"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSaveProperty} className="space-y-6">
-              {/* SECTION 1: Core Details */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#5d2809] uppercase tracking-wider border-b border-[#f0e3d3] pb-1">
-                  1. Basic Property Information
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Property Title *</label>
+            {/* Modal Body */}
+            <form onSubmit={handleSaveFlat} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+              {/* Client Sample Protection Notice */}
+              {isEditingClientSample && (
+                <div className="p-3.5 rounded-xl bg-[#ffdea7]/30 border border-[#ffdea7] text-[#5d2809] flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">verified</span>
+                  <div className="leading-relaxed">
+                    <strong>Client Reference Sample Record:</strong> You are modifying an authentic client demonstration record. Changes will update the live public discovery journey. You can restore initial reference defaults anytime using <em>&quot;Reset Demo Data&quot;</em>.
+                  </div>
+                </div>
+              )}
+
+              {/* Error Alert */}
+              {formError && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">error</span>
+                  <div className="font-semibold leading-relaxed">{formError}</div>
+                </div>
+              )}
+
+              {/* Hierarchy Group: City, Locality, Project, Wing */}
+              <div className="space-y-3 p-4 rounded-2xl bg-[#faf6ee] border border-[#ecd9c6]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b] block">
+                  Property Hierarchy Placement
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* City */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">City *</label>
                     <input
                       type="text"
+                      value={formCity}
+                      onChange={(e) => setFormCity(e.target.value)}
+                      placeholder="e.g. Mumbai"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
                       required
-                      value={formData.title || ''}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="e.g. Sunrise Residency"
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Subtitle / Tagline</label>
+                  {/* Locality */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">Locality *</label>
                     <input
                       type="text"
-                      value={formData.subtitle || ''}
-                      onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                      placeholder="e.g. Ultra-Luxury Auspicious 3 BHK"
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
+                      value={formLocality}
+                      onChange={(e) => setFormLocality(e.target.value)}
+                      placeholder="e.g. Andheri"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
+                      required
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Property Typology</label>
-                    <select
-                      value={formData.propertyType || 'Apartment'}
-                      onChange={(e) => setFormData({ ...formData, propertyType: e.target.value as any })}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    >
-                      <option value="Apartment">Apartment</option>
-                      <option value="Villa">Villa</option>
-                      <option value="Independent House">Independent House</option>
-                      <option value="Penthouse">Penthouse</option>
-                      <option value="Plot">Plot</option>
-                    </select>
+                  {/* Project */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">Project Name *</label>
+                    <input
+                      type="text"
+                      value={formProject}
+                      onChange={(e) => setFormProject(e.target.value)}
+                      placeholder="e.g. Godrej"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
+                      required
+                    />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">BHK Configuration</label>
+                  {/* Wing */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">Wing *</label>
+                    <input
+                      type="text"
+                      value={formWing}
+                      onChange={(e) => setFormWing(e.target.value)}
+                      placeholder="e.g. Wing A"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Flat Attributes: PP Code, Config, Series Number, Vastu Status */}
+              <div className="space-y-3 p-4 rounded-2xl bg-white border border-[#ecd9c6]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#86736b] block">
+                  Flat Identification & Assessment
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* PP Code (Manual entry with optional suggest button) */}
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-[#4a240c]">
+                        PP Code * <span className="font-normal text-[#86736b]">(Must be unique within project)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleSuggestDemoCode}
+                        className="text-[10px] text-[#7a3e1e] hover:underline font-bold cursor-pointer"
+                      >
+                        Suggest Demo Code
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formPpCode}
+                      onChange={(e) => setFormPpCode(e.target.value)}
+                      placeholder="e.g. A001 or GDR-07"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
+                      required
+                    />
+                  </div>
+
+                  {/* Configuration */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">Configuration *</label>
                     <select
-                      value={formData.bhk || '3 BHK'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const num = parseInt(val.charAt(0)) || 3;
-                        setFormData({ ...formData, bhk: val, bhkNum: num });
-                      }}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
+                      value={formBhk}
+                      onChange={(e) => setFormBhk(e.target.value)}
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] font-semibold cursor-pointer"
                     >
                       <option value="1 BHK">1 BHK</option>
                       <option value="2 BHK">2 BHK</option>
                       <option value="3 BHK">3 BHK</option>
-                      <option value="4+ BHK">4+ BHK</option>
+                      <option value="4 BHK">4 BHK</option>
+                      <option value="Penthouse">Penthouse</option>
                     </select>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Price Display (e.g. ₹ 2.40 Cr) *</label>
+                  {/* Series Number */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#4a240c] mb-1">
+                      Series Number * <span className="font-normal text-[#86736b]">(Inspection view only)</span>
+                    </label>
                     <input
                       type="text"
+                      value={formSeriesNumber}
+                      onChange={(e) => setFormSeriesNumber(e.target.value)}
+                      placeholder="e.g. 1 or 7"
+                      className="w-full bg-white border border-[#dfceba] rounded-xl px-3 py-2 text-xs text-[#4a240c] focus:outline-hidden focus:border-[#7a3e1e]"
                       required
-                      value={formData.price || ''}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Area / Square Footage</label>
-                    <input
-                      type="text"
-                      value={formData.sqft || ''}
-                      onChange={(e) => setFormData({ ...formData, sqft: e.target.value })}
-                      placeholder="e.g. 1,325 sq.ft."
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* SECTION 2: Location Auto-Linking */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#5d2809] uppercase tracking-wider border-b border-[#f0e3d3] pb-1">
-                  2. Location & Geographic Orientation
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">State (Auto-linked)</label>
-                    <select
-                      value={formData.state || 'Maharashtra'}
-                      onChange={(e) => handleFormStateChange(e.target.value)}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    >
-                      {ALL_STATES.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">City (Auto-links State)</label>
-                    <select
-                      value={formData.city || 'Mumbai'}
-                      onChange={(e) => handleFormCityChange(e.target.value)}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    >
-                      {(STATE_CITIES[formData.state || 'Maharashtra'] || ALL_CITIES).map((ct) => (
-                        <option key={ct} value={ct}>
-                          {ct}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Locality / Sector</label>
-                    <input
-                      type="text"
-                      list="admin-locality-options"
-                      value={formData.locality || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          locality: e.target.value,
-                          location: `${e.target.value}, ${formData.city}`,
-                        })
-                      }
-                      placeholder={`e.g. ${(getLocalitiesForCity(formData.city || '')[0]) || 'Prime Locality'}`}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    />
-                    <datalist id="admin-locality-options">
-                      {getLocalitiesForCity(formData.city || '').map((loc) => (
-                        <option key={loc} value={loc} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Main Entrance Facing</label>
-                    <select
-                      value={formData.facing || 'North'}
-                      onChange={(e) => setFormData({ ...formData, facing: e.target.value })}
-                      className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                    >
-                      <option value="North">North (Kuber - Auspicious)</option>
-                      <option value="North-East">North-East (Ishanya - Divine)</option>
-                      <option value="East">East (Indra - Clarity)</option>
-                      <option value="South-East">South-East (Agni)</option>
-                      <option value="West">West (Varuna)</option>
-                      <option value="North-West">North-West (Vayu)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 3: Hero Photo & Preset Selector */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#5d2809] uppercase tracking-wider border-b border-[#f0e3d3] pb-1">
-                  3. Architectural Photography & Media
-                </h4>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-700">Hero Image URL</label>
-                  <input
-                    type="url"
-                    value={formData.heroImage || ''}
-                    onChange={(e) => setFormData({ ...formData, heroImage: e.target.value })}
-                    className="w-full bg-white border border-[#d8c2b9] rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#7a3e1e] focus:outline-none"
-                  />
-
-                  {/* 1-Click Luxury Presets */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-[11px] font-bold text-stone-500">Quick Luxury Presets:</span>
-                    {PRESET_IMAGES.map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, heroImage: preset.url })}
-                        className="px-2.5 py-1 text-xs rounded-lg bg-[#faeee2] hover:bg-[#eedfc9] text-[#7a3e1e] font-semibold transition cursor-pointer"
-                      >
-                        {preset.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {formData.heroImage && (
-                    <div className="w-full h-36 rounded-xl overflow-hidden border border-[#d8c2b9] mt-2 bg-stone-100">
-                      <img src={formData.heroImage} alt="Hero Preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SECTION 4: Directional Energy Radar Sliders & Live Preview */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#5d2809] uppercase tracking-wider border-b border-[#f0e3d3] pb-1">
-                  4. 8-Direction Energy Graph (Radar Calibration)
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  {/* Sliders */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {modalRadarData.points.map((pt) => (
-                      <div key={pt.key} className="bg-white border border-[#eedecb] rounded-xl p-2.5 space-y-1">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span>{pt.label} Direction</span>
-                          <span className="text-emerald-700 font-mono">{pt.val}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="4.0"
-                          max="10.0"
-                          step="0.1"
-                          value={formData.radarScores?.[pt.key] ?? 8.0}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            setFormData({
-                              ...formData,
-                              radarScores: {
-                                ...(formData.radarScores || {
-                                  N: 8,
-                                  NE: 8,
-                                  E: 8,
-                                  SE: 8,
-                                  S: 8,
-                                  SW: 8,
-                                  W: 8,
-                                  NW: 8,
-                                }),
-                                [pt.key]: val,
-                              },
-                            });
-                          }}
-                          className="w-full accent-[#7a3e1e] cursor-pointer"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Real-time SVG Radar Preview */}
-                  <div className="bg-white rounded-2xl border border-[#eedecb] p-4 text-center">
-                    <div className="text-xs font-bold text-stone-500 uppercase">Live Polygon Preview</div>
-                    <div className="relative w-44 h-44 mx-auto my-1 flex items-center justify-center">
-                      <svg className="w-full h-full" viewBox="0 0 200 200">
-                        <circle cx="100" cy="100" fill="none" r="70" stroke="#e8ded2" strokeWidth="1"></circle>
-                        <circle cx="100" cy="100" fill="none" r="50" stroke="#efe7dc" strokeWidth="1"></circle>
-                        <circle cx="100" cy="100" fill="none" r="30" stroke="#f4eee4" strokeWidth="1"></circle>
-                        <line stroke="#e2d6c5" strokeWidth="0.75" x1="100" x2="100" y1="20" y2="180"></line>
-                        <line stroke="#e2d6c5" strokeWidth="0.75" x1="20" x2="180" y1="100" y2="100"></line>
-                        <line stroke="#e2d6c5" strokeWidth="0.75" x1="43" x2="157" y1="43" y2="157"></line>
-                        <line stroke="#e2d6c5" strokeWidth="0.75" x1="43" x2="157" y1="157" y2="43"></line>
-
-                        <polygon
-                          fill="#34d399"
-                          fillOpacity="0.32"
-                          points={modalRadarData.pointsStr}
-                          stroke="#059669"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                        ></polygon>
-
-                        {modalRadarData.points.map((pt) => (
-                          <circle
-                            key={pt.key}
-                            cx={pt.x}
-                            cy={pt.y}
-                            fill={pt.val < 7.5 ? '#d97706' : '#059669'}
-                            r="2.8"
-                          />
-                        ))}
-                      </svg>
-                    </div>
-                    <div className="text-xs font-bold text-[#5d2809]">
-                      Calculated Score: {modalRadarData.avgScore} / 10
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 5: Badges & Toggles */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#5d2809] uppercase tracking-wider border-b border-[#f0e3d3] pb-1">
-                  5. Badges, Featured & Compliance
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="flex items-center gap-2.5 bg-white border border-[#eedecb] rounded-xl p-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.featured || false}
-                      onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                      className="w-4 h-4 accent-[#7a3e1e]"
-                    />
-                    <div>
-                      <div className="text-xs font-bold text-stone-800">Featured on Homepage</div>
-                      <div className="text-[10px] text-stone-500">Highlights this property in top star slots</div>
-                    </div>
+                {/* Vastu Status Segmented Selector */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#4a240c] mb-1.5">
+                    Vastu Status Assessment *
                   </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormVastuStatus('Aligned')}
+                      className={`p-2.5 rounded-xl border text-center transition cursor-pointer ${
+                        formVastuStatus === 'Aligned'
+                          ? 'bg-[#e6f4ea] border-[#137333] text-[#137333] font-bold ring-2 ring-[#137333]/20'
+                          : 'bg-white border-[#dfceba] text-[#53433c] hover:border-[#137333]'
+                      }`}
+                    >
+                      <span className="block font-bold">Aligned</span>
+                      <span className="block text-[10px] text-[#86736b] mt-0.5">High natural zoning</span>
+                    </button>
 
-                  <div className="bg-white border border-[#eedecb] rounded-xl p-3 space-y-1">
-                    <label className="text-xs font-bold text-stone-800">RERA Registration ID</label>
-                    <input
-                      type="text"
-                      value={formData.reraId || ''}
-                      onChange={(e) => setFormData({ ...formData, reraId: e.target.value })}
-                      placeholder="e.g. P51800028911"
-                      className="w-full bg-[#fcfaf6] border border-[#d8c2b9] rounded-lg px-2.5 py-1 text-xs focus:outline-none"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormVastuStatus('Balanced')}
+                      className={`p-2.5 rounded-xl border text-center transition cursor-pointer ${
+                        formVastuStatus === 'Balanced'
+                          ? 'bg-[#fef7e0] border-[#b06000] text-[#b06000] font-bold ring-2 ring-[#b06000]/20'
+                          : 'bg-white border-[#dfceba] text-[#53433c] hover:border-[#b06000]'
+                      }`}
+                    >
+                      <span className="block font-bold">Balanced</span>
+                      <span className="block text-[10px] text-[#86736b] mt-0.5">Optimal harmony</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormVastuStatus('Adaptable')}
+                      className={`p-2.5 rounded-xl border text-center transition cursor-pointer ${
+                        formVastuStatus === 'Adaptable'
+                          ? 'bg-[#fce8e6] border-[#c5221f] text-[#c5221f] font-bold ring-2 ring-[#c5221f]/20'
+                          : 'bg-white border-[#dfceba] text-[#53433c] hover:border-[#c5221f]'
+                      }`}
+                    >
+                      <span className="block font-bold">Adaptable</span>
+                      <span className="block text-[10px] text-[#86736b] mt-0.5">Remedy-ready</span>
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e8dac8]">
+              {/* Form Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 hover:bg-stone-200 transition cursor-pointer"
+                  onClick={() => setIsFormOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#5d2809] font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#7a3e1e] hover:bg-[#5d2809] text-white px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md active:scale-95 transition cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#7a3e1e] hover:bg-[#5d2809] text-white font-bold transition shadow-2xs cursor-pointer active:scale-95"
                 >
-                  {editingPropertyId ? 'Save & Update Live' : 'Publish Property Now'}
+                  {editingFlatId ? 'Update Flat Record' : 'Save Demonstration Flat'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* DELETE CONFIRMATION MODAL                                            */}
+      {/* ==================================================================== */}
+      {deletingFlat && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-2xl">delete_forever</span>
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-serif font-bold text-[#4a240c]">
+                Confirm Flat Removal
+              </h3>
+              <p className="text-xs text-[#53433c]">
+                Are you sure you want to remove flat <strong>{deletingFlat.ppCode}</strong> ({deletingFlat.bhk}) from {deletingFlat.projectName}?
+              </p>
+            </div>
+
+            {deletingFlat.isClientSample && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                <strong>Client Sample Warning:</strong> This is an authentic client reference sample record. You can restore it anytime using <em>&quot;Reset Demo Data&quot;</em>.
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingFlat(null)}
+                className="px-4 py-2 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#5d2809] text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-2xs cursor-pointer"
+              >
+                Delete Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* RESET TO DEMO DATA CONFIRMATION MODAL                                */}
+      {/* ==================================================================== */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-[#ecd9c6] shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#f6eee2] text-[#7a3e1e] flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-2xl">restore</span>
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-serif font-bold text-[#4a240c]">
+                Restore Demo Defaults?
+              </h3>
+              <p className="text-xs text-[#53433c] leading-relaxed">
+                This will restore all demonstration inventory back to initial reference defaults, ensuring the 6 Godrej client reference sample records (<code>A001</code>, <code>FDDES</code>, <code>VVFTT</code>, <code>GGGLT</code>, <code>HJJYY</code>, <code>KKYI</code>) are intact and clearing any demo modifications.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#5d2809] text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="px-4 py-2 rounded-xl bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
+              >
+                Restore Defaults
+              </button>
+            </div>
           </div>
         </div>
       )}

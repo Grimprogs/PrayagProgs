@@ -7,8 +7,9 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string }>>([
     {
       sender: 'ai',
-      text: `Namaste! I am the Pragyaa Vastu AI advisor. Ask me anything regarding 16-zone spatial balance, directional remedies, or ${propertyTitle || 'property energy'
-        }.`
+      text: `Namaste! I am the Pragyaa Vastu AI advisor. Ask me anything regarding directional orientation, natural light balance, or ${
+        propertyTitle || 'property layouts'
+      }.`
     }
   ]);
   const [input, setInput] = useState('');
@@ -16,7 +17,7 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
   const quickQuestions = [
     'Why is North-East (Ishanya) so vital?',
     'What if the kitchen is in North instead of South-East?',
-    'How do 16 micro-zones differ from 8 directions?',
+    'What is the difference between Aligned and Balanced?',
     'Are structural demolitions needed for remedies?'
   ];
 
@@ -28,17 +29,22 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
     setInput('');
 
     setTimeout(() => {
-      let reply = 'According to classical Sthapatya Veda and the Mayamatam text, every cardinal zone corresponds to a Panchabhuta element. PragyaaProp verifies orientation using magnetic true north, providing non-invasive elemental remedies with copper, brass, and sacred geometry without requiring structural breakdown.';
+      let reply =
+        'PragyaaProp evaluates residential spaces based on natural directional principles such as morning solar exposure, airflow circulation, and spatial zoning balance across Aligned, Balanced, and Adaptable categories.';
 
       const lower = q.toLowerCase();
       if (lower.includes('north-east') || lower.includes('ishanya')) {
-        reply = 'Ishanya (North-East) is governed by Lord Shiva and the Water element (Jala). It is the conduit of cosmic prana, mental clarity, and spiritual prosperity. Heavy storage, toilets, or kitchens in this zone obstruct life-force. We ensure pristine water features or prayer corners here.';
+        reply =
+          'Ishanya (North-East) is traditionally associated with the Water element (Jala), morning sunlight, and mental clarity. Keeping this zone uncluttered with good window ventilation supports a bright, peaceful living space.';
       } else if (lower.includes('kitchen') || lower.includes('agni') || lower.includes('south-east')) {
-        reply = 'The South-East is governed by Agni (Fire deity). Cooking should face East so the chef absorbs morning solar energy. If a kitchen exists elsewhere, our certified remedy uses insulated green stone slabs and copper boundary rods to isolate heat currents non-invasively.';
-      } else if (lower.includes('16') || lower.includes('zone') || lower.includes('8')) {
-        reply = 'Standard 8-direction charts span 45-degree chunks, often masking critical structural flaws. Pragyaa divides the property into 16 exact 22.5-degree zones (like North-North-East and South-South-West) for surgical energetic calibration.';
+        reply =
+          'The South-East is traditionally associated with Agni (Fire element). Ideally, food preparation faces East to utilize morning daylight. If located elsewhere, non-invasive design tweaks and smart ventilation can easily balance the zone.';
+      } else if (lower.includes('aligned') || lower.includes('balanced') || lower.includes('status')) {
+        reply =
+          'PragyaaProp uses three qualitative categories: Aligned (harmonious natural directional placement), Balanced (functional, comfortable everyday living with solid harmony), and Adaptable (flexible layouts suitable for subtle interior optimizations).';
       } else if (lower.includes('demolition') || lower.includes('break')) {
-        reply = 'No! Our scientific methodology prioritizes 100% zero-demolition solutions using elemental reflectors, pyramid energy grids, and color-frequency harmonization.';
+        reply =
+          'No! PragyaaProp prioritizes zero-demolition spatial insights. Subtle non-structural adjustments, color balance, lighting choices, and thoughtful room utilization can comfortably optimize the living experience.';
       }
 
       setMessages((prev) => [...prev, { sender: 'ai', text: reply }]);
@@ -47,12 +53,14 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
 
   return (
     <>
-      {/* Floating Action Cluster */}
-      <div className="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+      {/* Floating Action Cluster (Positioned safely above mobile bottom bar) */}
+      <div className="fixed right-4 bottom-18 sm:right-6 sm:bottom-6 z-30 flex flex-col items-end gap-3 pointer-events-auto">
         {/* Ask Vastu AI Floating Avatar Bubble */}
-        <div
+        <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className="relative group cursor-pointer"
+          className="relative group cursor-pointer text-left focus:outline-hidden"
+          aria-label="Ask Vastu AI Advisor"
         >
           <div className="bg-white rounded-2xl shadow-xl border border-[#eedecb] p-2 flex items-center gap-2 hover:shadow-2xl transition-all duration-200">
             {/* Bot Head SVG / Avatar */}
@@ -72,21 +80,10 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
                 <span>Ask Vastu AI</span>
                 <span className="material-symbols-outlined text-[13px] text-[#c8923a]">auto_awesome</span>
               </div>
-              <div className="text-[9px] text-stone-500">Instant expert advice</div>
+              <div className="text-[9px] text-stone-500">Spatial layout advisor</div>
             </div>
           </div>
-        </div>
-
-        {/* Green WhatsApp Action Button */}
-        <a
-          href="https://wa.me/919820016800?text=Namaste,%20I%20am%20inquiring%20about%20Vastu-verified%20properties%20on%20PragyaaProp.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Chat with Advisor on WhatsApp"
-          className="w-12 h-12 bg-[#25d366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 text-xl cursor-pointer"
-        >
-          <i className="fa-brands fa-whatsapp text-2xl"></i>
-        </a>
+        </button>
       </div>
 
       {/* Interactive AI Chat Drawer / Modal */}

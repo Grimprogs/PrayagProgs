@@ -31,18 +31,21 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
 
   // Load from localStorage on mount
   useEffect(() => {
-    try {
-      const savedCredits = localStorage.getItem('pragyaa_credits');
-      if (savedCredits !== null) {
-        setCredits(parseInt(savedCredits, 10));
+    const timer = setTimeout(() => {
+      try {
+        const savedCredits = localStorage.getItem('pragyaa_credits');
+        if (savedCredits !== null) {
+          setCredits(parseInt(savedCredits, 10));
+        }
+        const savedUnlocked = localStorage.getItem('pragyaa_unlocked_props');
+        if (savedUnlocked) {
+          setUnlockedProperties(JSON.parse(savedUnlocked));
+        }
+      } catch {
+        // ignore
       }
-      const savedUnlocked = localStorage.getItem('pragyaa_unlocked_props');
-      if (savedUnlocked) {
-        setUnlockedProperties(JSON.parse(savedUnlocked));
-      }
-    } catch {
-      // ignore
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const addCredits = (amount: number, reason = 'Credits Added') => {

@@ -1,34 +1,54 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Property } from '@/types';
 import { propertiesData as initialProperties } from '@/data/properties';
 import { getStateForCity, getLocalitiesForCity } from '@/data/locations';
+import {
+  DiscoveryFlat,
+  DiscoveryProject,
+  getDefaultDiscoveryFlats,
+  buildDiscoveryHierarchy,
+} from '@/data/discovery';
 import { useToast } from './ToastContext';
 
 interface PropertiesContextType {
   properties: Property[];
+  discoveryFlats: DiscoveryFlat[];
+  discoveryProjects: DiscoveryProject[];
   getPropertyBySlug: (slug: string) => Property | undefined;
   addProperty: (property: Property) => void;
   updateProperty: (id: string, updatedFields: Partial<Property>) => void;
   deleteProperty: (id: string) => void;
   toggleFeatured: (id: string) => void;
   resetToDefault: () => void;
+  // Discovery inventory actions
+  addDiscoveryFlat: (flat: DiscoveryFlat) => void;
+  updateDiscoveryFlat: (id: string, updatedFields: Partial<DiscoveryFlat>) => void;
+  deleteDiscoveryFlat: (id: string) => void;
+  resetDiscoveryToDefault: () => void;
 }
 
 const PropertiesContext = createContext<PropertiesContextType>({
   properties: initialProperties,
+  discoveryFlats: [],
+  discoveryProjects: [],
   getPropertyBySlug: () => undefined,
   addProperty: () => {},
   updateProperty: () => {},
   deleteProperty: () => {},
   toggleFeatured: () => {},
   resetToDefault: () => {},
+  addDiscoveryFlat: () => {},
+  updateDiscoveryFlat: () => {},
+  deleteDiscoveryFlat: () => {},
+  resetDiscoveryToDefault: () => {},
 });
 
 export const useProperties = () => useContext(PropertiesContext);
 
 const STORAGE_KEY = 'pragyaa_custom_properties_v2';
+const DISCOVERY_STORAGE_KEY = 'pragyaa_discovery_flats_v1';
 
 const sanitizeProperty = (p: Property): Property => {
   const city = p.city || 'Mumbai';
@@ -64,8 +84,16 @@ const sanitizeProperty = (p: Property): Property => {
 export function PropertiesProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [properties, setProperties] = useState<Property[]>(initialProperties);
+  const [discoveryFlats, setDiscoveryFlats] = useState<DiscoveryFlat[]>(() =>
+    getDefaultDiscoveryFlats(initialProperties)
+  );
 
-  // Load saved properties from localStorage on mount & listen for sync events
+  // Live computed discovery hierarchy directly from discoveryFlats
+  const discoveryProjects = useMemo(() => {
+    return buildDiscoveryHierarchy(discoveryFlats);
+  }, [discoveryFlats]);
+
+  // Load saved properties and discovery inventory from localStorage on mount & listen for sync events
   useEffect(() => {
     const loadFromStorage = () => {
       try {
@@ -79,13 +107,26 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
             const missingDefaults = initialProperties.filter((ip) => !existingIds.has(ip.id));
             const fullList = [...sanitizedParsed, ...missingDefaults];
             setProperties(fullList);
-            return;
           }
         }
       } catch (e) {
         console.warn('Failed to parse properties from localStorage', e);
       }
-      setProperties(initialProperties);
+
+      try {
+        const savedFlats = localStorage.getItem(DISCOVERY_STORAGE_KEY);
+        if (savedFlats) {
+          const parsedFlats = JSON.parse(savedFlats);
+          if (Array.isArray(parsedFlats) && parsedFlats.length > 0) {
+            setDiscoveryFlats(parsedFlats);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse discovery flats from localStorage', e);
+      }
+
+      setDiscoveryFlats(getDefaultDiscoveryFlats(initialProperties));
     };
 
     loadFromStorage();
@@ -99,13 +140,23 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
           }
         } catch {}
       }
+      if (e.key === DISCOVERY_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setDiscoveryFlats(parsed);
+          }
+        } catch {}
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('pragyaa_properties_updated', loadFromStorage);
+    window.addEventListener('pragyaa_discovery_updated', loadFromStorage);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('pragyaa_properties_updated', loadFromStorage);
+      window.removeEventListener('pragyaa_discovery_updated', loadFromStorage);
     };
   }, []);
 
@@ -117,6 +168,17 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
       window.dispatchEvent(new Event('pragyaa_properties_updated'));
     } catch (e) {
       console.warn('Failed to save to localStorage', e);
+    }
+  };
+
+  const saveDiscoveryFlats = (updated: DiscoveryFlat[]) => {
+    setDiscoveryFlats(updated);
+    try {
+      localStorage.setItem(DISCOVERY_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('pragyaa_discovery_updated'));
+      window.dispatchEvent(new Event('pragyaa_properties_updated'));
+    } catch (e) {
+      console.warn('Failed to save discovery flats to localStorage', e);
     }
   };
 
@@ -137,7 +199,7 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
   const updateProperty = (id: string, updatedFields: Partial<Property>) => {
     const updated = properties.map((p) => (p.id === id ? { ...p, ...updatedFields } : p));
     saveToStorage(updated);
-    showToast('Property details & Vastu graph updated successfully!');
+    showToast('Property details updated successfully!');
   };
 
   const deleteProperty = (id: string) => {
@@ -159,21 +221,57 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
     saveToStorage(updated);
   };
 
+  const addDiscoveryFlat = (newFlat: DiscoveryFlat) => {
+    const updated = [newFlat, ...discoveryFlats];
+    saveDiscoveryFlats(updated);
+    showToast(`Added flat "${newFlat.ppCode}" to ${newFlat.projectName} (${newFlat.wing})!`);
+  };
+
+  const updateDiscoveryFlat = (id: string, updatedFields: Partial<DiscoveryFlat>) => {
+    const updated = discoveryFlats.map((f) => (f.id === id ? { ...f, ...updatedFields } : f));
+    saveDiscoveryFlats(updated);
+    showToast(`Updated flat "${updatedFields.ppCode || id}" successfully!`);
+  };
+
+  const deleteDiscoveryFlat = (id: string) => {
+    const target = discoveryFlats.find((f) => f.id === id);
+    const updated = discoveryFlats.filter((f) => f.id !== id);
+    saveDiscoveryFlats(updated);
+    showToast(`Deleted flat "${target?.ppCode || 'Record'}" from inventory.`);
+  };
+
+  const resetDiscoveryToDefault = () => {
+    try {
+      localStorage.removeItem(DISCOVERY_STORAGE_KEY);
+    } catch {}
+    const defaults = getDefaultDiscoveryFlats(initialProperties);
+    setDiscoveryFlats(defaults);
+    window.dispatchEvent(new Event('pragyaa_discovery_updated'));
+    window.dispatchEvent(new Event('pragyaa_properties_updated'));
+  };
+
   const resetToDefault = () => {
     saveToStorage(initialProperties);
-    showToast('Reset all properties back to official catalog defaults.');
+    resetDiscoveryToDefault();
+    showToast('Reset all properties and inventory back to official defaults.');
   };
 
   return (
     <PropertiesContext.Provider
       value={{
         properties,
+        discoveryFlats,
+        discoveryProjects,
         getPropertyBySlug,
         addProperty,
         updateProperty,
         deleteProperty,
         toggleFeatured,
         resetToDefault,
+        addDiscoveryFlat,
+        updateDiscoveryFlat,
+        deleteDiscoveryFlat,
+        resetDiscoveryToDefault,
       }}
     >
       {children}

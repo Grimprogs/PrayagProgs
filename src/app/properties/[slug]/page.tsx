@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { getPropertyBySlug, getAllProperties } from '@/data/properties';
 import PropertyDetailClient from './PropertyDetailClient';
 

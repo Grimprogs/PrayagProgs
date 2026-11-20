@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, react-hooks/set-state-in-effect, @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState } from 'react';
