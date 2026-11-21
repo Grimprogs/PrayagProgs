@@ -162,7 +162,10 @@ export default function VastuAuditModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm animate-fade-in"
+      style={{ zIndex: 99999 }}
+    >
       <div
         className="relative w-full max-w-4xl bg-[#fbf9f5] border border-[#ecd9c6] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}

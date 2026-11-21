@@ -88,7 +88,10 @@ export default function VastuAiWidget({ propertyTitle }: { propertyTitle?: strin
 
       {/* Interactive AI Chat Drawer / Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-end sm:justify-end sm:p-6 bg-black/30 backdrop-blur-xs">
+        <div
+          className="fixed inset-0 flex items-end sm:items-center justify-end sm:justify-end sm:p-6 bg-black/30 backdrop-blur-xs"
+          style={{ zIndex: 99999 }}
+        >
           <div className="w-full sm:w-[420px] bg-white rounded-t-3xl sm:rounded-3xl border border-[#eedecb] shadow-2xl flex flex-col h-[520px] overflow-hidden animate-in slide-in-from-bottom-5">
             {/* Header */}
             <div className="bg-[#5d2809] text-white p-4 flex items-center justify-between">

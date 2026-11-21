@@ -911,12 +911,13 @@ function GuidedDiscoveryContent() {
                                 {flat.isClientSample ? 'Client Sample' : 'Demonstration Record'}
                               </span>
                             </div>
-                            {flat.price && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[#86736b]">Price:</span>
-                                <span className="font-serif font-bold text-[#4a240c]">{flat.price}</span>
-                              </div>
-                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-[#86736b]">Vastu Verification:</span>
+                              <span className="font-bold text-[#137333] flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">verified</span>
+                                100% Certified Audit
+                              </span>
+                            </div>
                             <div className="flex items-center justify-between text-[11px] text-[#86736b] pt-1 border-t border-[#f7efe6]">
                               <span className="flex items-center gap-1 text-emerald-800 font-semibold">
                                 <span className="material-symbols-outlined text-xs">verified</span>
@@ -1098,8 +1099,8 @@ function GuidedDiscoveryContent() {
                         <span className="font-bold text-[#4a240c] mt-0.5 block">{inspectedFlat.sqft || '890 sq.ft.'}</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
-                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Pricing</span>
-                        <span className="font-bold text-[#4a240c] mt-0.5 block">{inspectedFlat.price || '₹ 2.45 Cr'}</span>
+                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Vastu Alignment</span>
+                        <span className="font-bold text-[#7a3e1e] mt-0.5 block">{inspectedFlat.vastuStatus} Layout</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
                         <span className="block text-[10px] uppercase font-bold text-[#86736b]">Floor Allocation</span>

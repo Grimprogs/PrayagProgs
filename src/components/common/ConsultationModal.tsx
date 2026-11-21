@@ -25,7 +25,10 @@ export default function ConsultationModal({ isOpen, onClose, preferredExpert }: 
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+      style={{ zIndex: 99999 }}
+    >
       <div className="bg-white rounded-3xl border border-[#eedecb] shadow-2xl max-w-md w-full p-6 relative animate-in fade-in duration-150">
         <button
           onClick={onClose}

@@ -72,7 +72,10 @@ export default function VastuReportPdfModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white"
+      style={{ zIndex: 99999 }}
+    >
       <div className="bg-[#fcfaf5] rounded-3xl border border-[#e4d3bd] shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden relative print:border-none print:shadow-none print:max-w-none print:max-h-none print:w-full">
         {/* Top Control Bar (Hidden on print) */}
         <div className="bg-[#4a240c] text-white px-5 py-3.5 flex items-center justify-between shrink-0 print:hidden">

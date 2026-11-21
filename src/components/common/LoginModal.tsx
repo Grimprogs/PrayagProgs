@@ -45,7 +45,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#30312e]/60 backdrop-blur-xs transition-opacity duration-200">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 bg-[#30312e]/60 backdrop-blur-xs transition-opacity duration-200"
+      style={{ zIndex: 99999 }}
+    >
       <div className="bg-gradient-to-b from-[#fbf8f3] via-[#f7f0e6] to-[#f4ebe0] rounded-3xl border border-[#d8c2b9] shadow-2xl max-w-lg w-full p-6 sm:p-8 relative">
         <button
           onClick={onClose}

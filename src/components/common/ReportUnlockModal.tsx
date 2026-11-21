@@ -49,7 +49,10 @@ export default function ReportUnlockModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs"
+      style={{ zIndex: 99999 }}
+    >
       <div className="bg-[#fcfaf6] rounded-3xl border border-[#ecdac2] shadow-2xl max-w-md w-full p-6 relative">
         <button
           onClick={onClose}
