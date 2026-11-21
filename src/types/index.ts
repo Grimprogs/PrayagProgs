@@ -79,4 +79,8 @@ export interface Property {
     distance: string;
   }[];
   reviews: PropertyReview[];
+  ppCode?: string;
+  wing?: string;
+  seriesNumber?: string;
+  projectName?: string;
 }

@@ -159,10 +159,11 @@ export default function PropertyDetailClient({ slug, property: serverProperty }:
   const breadcrumbs = [
     { label: 'Home', href: '/' },
     { label: 'Properties', href: '/properties' },
-    { label: property.state, href: `/properties?state=${encodeURIComponent(property.state)}` },
     { label: property.city, href: `/properties?city=${encodeURIComponent(property.city)}` },
-    { label: property.locality },
-    { label: `${property.title} – ${property.bhk}`, active: true }
+    { label: property.locality, href: `/properties?city=${encodeURIComponent(property.city)}&locality=${encodeURIComponent(property.locality)}` },
+    ...(property.projectName ? [{ label: property.projectName, href: `/properties?city=${encodeURIComponent(property.city)}&locality=${encodeURIComponent(property.locality)}&q=${encodeURIComponent(property.projectName)}` }] : []),
+    ...(property.wing ? [{ label: property.wing, href: `/properties?city=${encodeURIComponent(property.city)}&locality=${encodeURIComponent(property.locality)}&q=${encodeURIComponent(property.projectName || '')}&wing=${encodeURIComponent(property.wing)}` }] : []),
+    { label: property.ppCode ? `Flat ${property.ppCode} (${property.bhk})` : `${property.title} – ${property.bhk}`, active: true }
   ];
 
   return (
@@ -196,10 +197,20 @@ export default function PropertyDetailClient({ slug, property: serverProperty }:
                     className="w-full h-full object-cover transition duration-300"
                   />
                   {/* Badges on top-left */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                  <div className="absolute top-3 left-3 flex items-center flex-wrap gap-1.5 z-10">
                     <span className="bg-[#dcfce7] text-[#166534] text-[11px] font-bold px-2.5 py-1 rounded-full border border-[#bbf7d0] inline-flex items-center gap-1 shadow-sm">
                       <i className="fa-solid fa-check text-[10px]"></i> Vastu Certified
                     </span>
+                    {property.ppCode && (
+                      <span className="bg-[#4a240c] text-white text-[11px] font-mono font-bold px-2.5 py-1 rounded-full shadow-sm">
+                        PP Code: {property.ppCode}
+                      </span>
+                    )}
+                    {property.wing && (
+                      <span className="bg-[#ffdea7] text-[#5d2809] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                        {property.wing} {property.seriesNumber ? `• Series ${property.seriesNumber}` : ''}
+                      </span>
+                    )}
                     <span className="bg-white/95 backdrop-blur-sm text-stone-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-stone-200 shadow-sm inline-flex items-center gap-1">
                       <i className="fa-solid fa-shield text-[10px] text-stone-500"></i> {property.reraStatus}
                     </span>

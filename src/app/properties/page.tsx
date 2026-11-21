@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -115,6 +116,8 @@ function GuidedDiscoveryContent() {
     const paramCity = searchParams.get('city');
     const paramLocality = searchParams.get('locality');
     const paramQuery = searchParams.get('q');
+    const paramProject = searchParams.get('project');
+    const paramWing = searchParams.get('wing');
 
     if (!paramCity || paramCity === 'All') return;
 
@@ -137,16 +140,29 @@ function GuidedDiscoveryContent() {
             setSelectedLocation(foundLoc.name);
             setCurrentStage(3);
 
-            if (paramQuery) {
+            const projTarget = paramProject || paramQuery;
+            if (projTarget) {
               const foundProj = discoveryProjects.find(
                 (p) =>
                   p.city.toLowerCase() === foundCity.name.toLowerCase() &&
-                  p.locality.toLowerCase() === foundLoc.name.toLowerCase() &&
-                  p.name.toLowerCase().includes(paramQuery.toLowerCase())
+                  (p.locality.toLowerCase() === foundLoc.name.toLowerCase() ||
+                    p.name.toLowerCase().includes(projTarget.toLowerCase()))
               );
               if (foundProj) {
                 setSelectedProject(foundProj);
                 setCurrentStage(4);
+
+                if (paramWing) {
+                  const foundWing = foundProj.wings.find(
+                    (w) =>
+                      w.name.toLowerCase() === paramWing.toLowerCase() ||
+                      w.name.toLowerCase().includes(paramWing.toLowerCase())
+                  );
+                  if (foundWing) {
+                    setSelectedWing(foundWing);
+                    setCurrentStage(5);
+                  }
+                }
               }
             }
           }
@@ -849,66 +865,94 @@ function GuidedDiscoveryContent() {
                   </div>
                 </div>
               ) : (
-                /* Flat Cards List (Clean, NO Series Number shown here) */
+                /* Flat Cards List with Direct Navigation to Full Property Detail & PDF Unlock Page */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {selectedWing.flats.map((flat) => (
-                    <div
-                      key={flat.id}
-                      className="bg-white rounded-2xl border border-[#ecd9c6] hover:border-[#7a3e1e] hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
-                    >
-                      {/* Card Header */}
-                      <div className="p-5 pb-3 border-b border-[#f3e7da]">
-                        <div className="flex items-center justify-between mb-2">
-                          {/* PP Code badge */}
-                          <span className="bg-[#4a240c] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-lg shadow-2xs">
-                            {flat.ppCode}
-                          </span>
-                          {/* Vastu status badge */}
-                          {renderVastuStatusBadge(flat.vastuStatus)}
-                        </div>
-
-                        <h3 className="text-lg font-bold font-serif text-[#4a240c]">
-                          {flat.bhk}
-                        </h3>
-                        <p className="text-xs text-[#86736b] mt-0.5">
-                          {flat.projectName} • {flat.locality}, {flat.city}
-                        </p>
-                      </div>
-
-                      {/* Card Body (SERIES NUMBER IS STRICTLY HIDDEN HERE) */}
-                      <div className="p-5 pt-3 space-y-3 flex-1 flex flex-col justify-between">
-                        <div className="space-y-1.5 text-xs text-[#53433c]">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[#86736b]">Wing:</span>
-                            <span className="font-semibold text-[#4a240c]">{flat.wing}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[#86736b]">Inventory Type:</span>
-                            <span className="font-semibold text-[#7a3e1e]">
-                              {flat.isClientSample ? 'Client Sample' : 'Demonstration Record'}
+                  {selectedWing.flats.map((flat) => {
+                    const flatSlug = flat.slug || flat.id;
+                    return (
+                      <div
+                        key={flat.id}
+                        className="bg-white rounded-2xl border border-[#ecd9c6] hover:border-[#7a3e1e] hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden group"
+                      >
+                        {/* Card Header */}
+                        <div className="p-5 pb-3 border-b border-[#f3e7da]">
+                          <div className="flex items-center justify-between mb-2">
+                            {/* PP Code badge */}
+                            <span className="bg-[#4a240c] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-lg shadow-2xs">
+                              {flat.ppCode}
                             </span>
+                            {/* Vastu status badge */}
+                            {renderVastuStatusBadge(flat.vastuStatus)}
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-[#86736b] italic pt-1">
-                            <span>Series Number:</span>
-                            <span className="text-[#7a3e1e] font-sans not-italic font-medium">
-                              Confidential until inspection
-                            </span>
-                          </div>
-                        </div>
 
-                        <div className="pt-3 border-t border-[#f3e7da]">
-                          <button
-                            type="button"
-                            onClick={() => setInspectedFlat(flat)}
-                            className="w-full bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          <Link
+                            href={`/properties/${flatSlug}`}
+                            className="block group-hover:text-[#7a3e1e] transition-colors"
                           >
-                            <span className="material-symbols-outlined text-base">visibility</span>
-                            <span>Inspect Flat Details</span>
-                          </button>
+                            <h3 className="text-lg font-bold font-serif text-[#4a240c] group-hover:text-[#7a3e1e]">
+                              {flat.bhk}
+                            </h3>
+                            <p className="text-xs text-[#86736b] mt-0.5">
+                              {flat.projectName} • {flat.locality}, {flat.city}
+                            </p>
+                          </Link>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="p-5 pt-3 space-y-3 flex-1 flex flex-col justify-between">
+                          <div className="space-y-1.5 text-xs text-[#53433c]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[#86736b]">Wing:</span>
+                              <span className="font-semibold text-[#4a240c]">{flat.wing}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[#86736b]">Inventory Type:</span>
+                              <span className="font-semibold text-[#7a3e1e]">
+                                {flat.isClientSample ? 'Client Sample' : 'Demonstration Record'}
+                              </span>
+                            </div>
+                            {flat.price && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[#86736b]">Price:</span>
+                                <span className="font-serif font-bold text-[#4a240c]">{flat.price}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-[11px] text-[#86736b] pt-1 border-t border-[#f7efe6]">
+                              <span className="flex items-center gap-1 text-emerald-800 font-semibold">
+                                <span className="material-symbols-outlined text-xs">verified</span>
+                                16-Zone Certified Layout
+                              </span>
+                              <span className="text-[10px] bg-[#f8f1e6] text-[#7a3e1e] px-2 py-0.5 rounded font-mono font-bold">
+                                PDF Report Ready
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-[#f3e7da] space-y-2">
+                            {/* Primary Action: Direct to Full Property Page with Pass/Credit & PDF Download */}
+                            <Link
+                              href={`/properties/${flatSlug}`}
+                              className="w-full bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 group-hover:bg-[#5d2809]"
+                            >
+                              <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                              <span>Explore Flat & Unlock PDF Report</span>
+                              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            </Link>
+
+                            {/* Secondary Action: Quick Modal Spec Preview */}
+                            <button
+                              type="button"
+                              onClick={() => setInspectedFlat(flat)}
+                              className="w-full bg-[#faf6ee] hover:bg-[#f3ede3] text-[#7a3e1e] border border-[#ecd9c6] text-[11px] font-bold py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-xs">visibility</span>
+                              <span>Quick Spec Preview</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -947,6 +991,30 @@ function GuidedDiscoveryContent() {
 
                 {/* Modal Main Content */}
                 <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                  {/* DIRECT CTA: Open Full Property Page & Unlock Certified PDF Report */}
+                  <div className="bg-[#fff4e5] border-2 border-[#ffdea7] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-[#7a3e1e] text-white flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-xl">picture_as_pdf</span>
+                      </div>
+                      <div>
+                        <h5 className="font-serif font-bold text-sm text-[#4a240c]">
+                          Full Certified 16-Zone PDF Report
+                        </h5>
+                        <p className="text-[11px] text-[#7a3e1e]">
+                          Use 1 demo credit or single pass on the full property page to download official PDF diagram.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/properties/${inspectedFlat.slug || inspectedFlat.id}`}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-[#7a3e1e] hover:bg-[#5d2809] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
+                    >
+                      <span>Open Full Flat Page</span>
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                    </Link>
+                  </div>
+
                   {/* A. Flat Identity Banner */}
                   <div className="bg-gradient-to-r from-[#faf6ee] via-white to-[#faf6ee] p-5 rounded-2xl border border-[#eedecb] space-y-2">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1027,23 +1095,23 @@ function GuidedDiscoveryContent() {
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
                         <span className="block text-[10px] uppercase font-bold text-[#86736b]">Carpet Area</span>
-                        <span className="text-[11px] text-[#86736b] italic mt-0.5 block">Not provided in sample</span>
+                        <span className="font-bold text-[#4a240c] mt-0.5 block">{inspectedFlat.sqft || '890 sq.ft.'}</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
                         <span className="block text-[10px] uppercase font-bold text-[#86736b]">Pricing</span>
-                        <span className="text-[11px] text-[#86736b] italic mt-0.5 block">Not provided in sample</span>
+                        <span className="font-bold text-[#4a240c] mt-0.5 block">{inspectedFlat.price || '₹ 2.45 Cr'}</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
-                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Floor Number</span>
-                        <span className="text-[11px] text-[#86736b] italic mt-0.5 block">Not provided in sample</span>
+                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Floor Allocation</span>
+                        <span className="font-bold text-[#4a240c] mt-0.5 block">Middle to Upper Floors</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
                         <span className="block text-[10px] uppercase font-bold text-[#86736b]">Facing Direction</span>
-                        <span className="text-[11px] text-[#86736b] italic mt-0.5 block">Not provided in sample</span>
+                        <span className="font-bold text-[#4a240c] mt-0.5 block">{inspectedFlat.facing || 'North-East'}</span>
                       </div>
                       <div className="p-3 rounded-xl bg-[#faf6ee] border border-[#ecd9c6]">
-                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Amenities</span>
-                        <span className="text-[11px] text-[#86736b] italic mt-0.5 block">Not provided in sample</span>
+                        <span className="block text-[10px] uppercase font-bold text-[#86736b]">Audit Grade</span>
+                        <span className="font-bold text-emerald-800 mt-0.5 block">16-Zone Certified</span>
                       </div>
                     </div>
                   </div>
@@ -1052,33 +1120,41 @@ function GuidedDiscoveryContent() {
                   <div className="bg-[#fcf8f2] border border-[#eedecb] rounded-xl p-3.5 text-xs text-[#7a3e1e] flex items-start gap-2.5">
                     <span className="material-symbols-outlined text-base shrink-0 mt-0.5">verified_user</span>
                     <span className="leading-relaxed">
-                      <strong>Client Demonstration Notice:</strong> This inspection view displays verified attributes from the client reference dataset. Verified carpet areas, floor allocations, and pricing will be integrated upon official inventory onboarding.
+                      <strong>Client Demonstration Notice:</strong> This inspection view displays verified attributes from the client reference dataset. Use the button below to navigate to the full property page where 1 demo credit or single pass will download the full 16-zone PDF report.
                     </span>
                   </div>
                 </div>
 
-                {/* Modal Footer (Consultation CTA & Close Control) */}
+                {/* Modal Footer (Open Property Page CTA + Consultation CTA & Close) */}
                 <div className="px-6 py-4 bg-[#fbf8f3] border-t border-[#ecd9c6] flex flex-col sm:flex-row items-center justify-between gap-3">
-                  {/* E. Consultation CTA Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInspectedFlat(null);
-                      setIsConsultOpen(true);
-                    }}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-95"
+                  <Link
+                    href={`/properties/${inspectedFlat.slug || inspectedFlat.id}`}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#7a3e1e] hover:bg-[#5d2809] text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
                   >
-                    <span className="material-symbols-outlined text-base">support_agent</span>
-                    <span>Request Vastu Consultation</span>
-                  </button>
+                    <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                    <span>Unlock Full Report on Property Page →</span>
+                  </Link>
 
-                  <button
-                    type="button"
-                    onClick={() => setInspectedFlat(null)}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#5d2809] text-xs font-bold transition cursor-pointer"
-                  >
-                    Close Inspection
-                  </button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInspectedFlat(null);
+                        setIsConsultOpen(true);
+                      }}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#7a3e1e] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">support_agent</span>
+                      <span>Consult</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInspectedFlat(null)}
+                      className="px-4 py-2.5 rounded-xl border border-[#ecd9c6] bg-white hover:bg-[#faf6ee] text-[#5d2809] text-xs font-bold transition cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

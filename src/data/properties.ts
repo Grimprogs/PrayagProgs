@@ -825,6 +825,320 @@ export const propertiesData: Property[] = [
     reviews: [
       { id: 'rev-vh-1', author: 'Dr. Anand Joshi', role: 'Vastu Consultant & Buyer', rating: 5, date: '10 Nov 2024', comment: 'Exceptional alignment in Northeast Ishanya corner and peaceful central core.' }
     ]
+  },
+
+  // ========================================================
+  // 19. GODREJ WING A – FLAT A001 (Series 1 - Aligned 9.4)
+  // ========================================================
+  {
+    id: 'godrej-flat-1',
+    slug: 'godrej-wing-a-a001',
+    title: 'Godrej – Wing A (Flat A001)',
+    subtitle: 'Client Reference 2 BHK • Series 1 • Aligned',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 2.45 Cr',
+    priceNumeric: 24500000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 9.4,
+    vastuScoreMax: 10,
+    vastuStatus: 'Inherently Aligned',
+    vastuGrade: 'Grade A++ (9.4/10)',
+    bhk: '2 BHK',
+    bhkNum: 2,
+    sqft: '890 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 2,
+    parking: 1,
+    facing: 'North-East',
+    possession: 'Ready to Move',
+    featured: true,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej Tower Wing A Architectural Elevation', category: 'Exterior' },
+      { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', caption: 'Living Room with Prana Solar Access', category: 'Living' },
+      { src: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80', caption: 'Modular Kitchen (Agni Quadrant)', category: 'Kitchen' },
+      { src: 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80', caption: 'Master Suite (Earth Zone)', category: 'Master' }
+    ],
+    overview: 'Godrej Flat A001 in Wing A (Andheri, Mumbai) is an inherently aligned 2 BHK residence evaluated under serialized 16-zone spatial energy audits. Features pristine North-East morning prana flow, unencumbered central Brahmasthan, and solid South-West grounding.',
+    spatialHighlights: [
+      { title: 'North-East Ishanya Entrance', description: 'Channels positive morning solar magnetic lines directly into living zones.', status: 'Optimal' },
+      { title: 'South-East Kitchen (Agni)', description: 'Hob oriented Eastward, ensuring high metabolic vitality and family prosperity.', status: 'Optimal' },
+      { title: 'Brahmasthan Open Axis', description: 'Center nexus completely clear of structural columns and drainage shafts.', status: 'Verified' }
+    ],
+    radarScores: { N: 9.6, NE: 9.8, E: 9.2, SE: 8.8, S: 8.6, SW: 9.0, W: 9.2, NW: 8.9 },
+    zones16: [
+      { name: 'Entrance (NE)', element: 'Water', score: 9.8, maxScore: 10, status: 'Enhanced', direction: 'North-East (45°)', observation: 'Auspicious Ishanya wealth and intellectual clarity doorway.' },
+      { name: 'Living Room (N)', element: 'Water', score: 9.6, maxScore: 10, status: 'Enhanced', direction: 'North (0°)', observation: 'Kuber gateway receiving continuous positive prana.' },
+      { name: 'Kitchen (SE)', element: 'Fire', score: 8.8, maxScore: 10, status: 'Balanced', direction: 'South-East (135°)', observation: 'Agni fire quadrant with Eastward cooking alignment.' },
+      { name: 'Master Bed (SW)', element: 'Earth', score: 9.0, maxScore: 10, status: 'Enhanced', direction: 'South-West (225°)', observation: 'Earth element Nirriti stability anchoring family leadership.' }
+    ],
+    amenities: ['16-Zone Certified Layout', 'East Balcony Deck', 'Pooja Alcove', 'Covered Parking', '24/7 Security & CCTV', 'Clubhouse & Gymnasium'],
+    reviews: [
+      { id: 'rev-g1', author: 'Dr. Radheshyam Sharma', role: 'Vedic Architecture Lead', rating: 5, date: '18 Nov 2024', comment: 'Series 1 in Wing A showcases extraordinary Ishanya quadrant alignment.' }
+    ],
+    ppCode: 'A001',
+    wing: 'Wing A',
+    seriesNumber: '1',
+    projectName: 'Godrej'
+  },
+
+  // ========================================================
+  // 20. GODREJ WING A – FLAT FDDES (Series 2 - Aligned 9.2)
+  // ========================================================
+  {
+    id: 'godrej-flat-2',
+    slug: 'godrej-wing-a-fddes',
+    title: 'Godrej – Wing A (Flat FDDES)',
+    subtitle: 'Client Reference 2 BHK • Series 2 • Aligned',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 2.50 Cr',
+    priceNumeric: 25000000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 9.2,
+    vastuScoreMax: 10,
+    vastuStatus: 'Inherently Aligned',
+    vastuGrade: 'Grade A++ (9.2/10)',
+    bhk: '2 BHK',
+    bhkNum: 2,
+    sqft: '910 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 2,
+    parking: 1,
+    facing: 'North-East',
+    possession: 'Ready to Move',
+    featured: true,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej Tower Wing A Facade', category: 'Exterior' },
+      { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', caption: 'Series 2 Natural Sunlight Living', category: 'Living' }
+    ],
+    overview: 'Godrej Flat FDDES in Wing A is a premier Series 2 two-bedroom home with direct North-East facing orientation and unobstructed solar light. Fully verified against Mayamatam 22.5° sector angular geometry.',
+    spatialHighlights: [
+      { title: 'True North Cadastral Calibration', description: 'Zero declination angular precision verified against municipal satellite GIS.', status: 'Optimal' },
+      { title: 'Vayu Balcony Circulation', description: 'North-West ventilation channels cool evening breeze.', status: 'Optimal' }
+    ],
+    radarScores: { N: 9.4, NE: 9.5, E: 9.0, SE: 8.6, S: 8.4, SW: 8.9, W: 8.8, NW: 9.0 },
+    zones16: [
+      { name: 'Living Room (NE)', element: 'Water', score: 9.5, maxScore: 10, status: 'Enhanced', direction: 'North-East (45°)', observation: 'Abundant natural morning ultraviolet sterilization.' },
+      { name: 'Kitchen (SE)', element: 'Fire', score: 8.6, maxScore: 10, status: 'Balanced', direction: 'South-East (135°)', observation: 'Agni aligned cooking platform.' }
+    ],
+    amenities: ['16-Zone Certified Layout', 'Dedicated Pooja Corner', 'East Balcony Deck', 'High Speed Elevators', 'Covered Parking'],
+    reviews: [],
+    ppCode: 'FDDES',
+    wing: 'Wing A',
+    seriesNumber: '2',
+    projectName: 'Godrej'
+  },
+
+  // ========================================================
+  // 21. GODREJ WING A – FLAT VVFTT (Series 3 - Balanced 8.6)
+  // ========================================================
+  {
+    id: 'godrej-flat-3',
+    slug: 'godrej-wing-a-vvftt',
+    title: 'Godrej – Wing A (Flat VVFTT)',
+    subtitle: 'Client Reference 2 BHK • Series 3 • Balanced',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 2.40 Cr',
+    priceNumeric: 24000000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 8.6,
+    vastuScoreMax: 10,
+    vastuStatus: 'Functionally Balanced',
+    vastuGrade: 'Grade A (8.6/10)',
+    bhk: '2 BHK',
+    bhkNum: 2,
+    sqft: '875 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 2,
+    parking: 1,
+    facing: 'East',
+    possession: 'Ready to Move',
+    featured: false,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej Wing A Series 3 Layout', category: 'Exterior' }
+    ],
+    overview: 'Godrej Flat VVFTT (Series 3) provides functional balance across bedroom and dining areas. Features Eastward facing main balcony and practical room layout ideal for urban family living.',
+    spatialHighlights: [
+      { title: 'East Surya Balcony', description: 'Receives direct sunrise rays promoting circadian vitality.', status: 'Optimal' },
+      { title: 'Stable Master Suite', description: 'South-West positioned master bedroom ensuring undisturbed sleep.', status: 'Balanced' }
+    ],
+    radarScores: { N: 8.7, NE: 8.9, E: 8.8, SE: 8.2, S: 8.0, SW: 8.5, W: 8.3, NW: 8.2 },
+    zones16: [
+      { name: 'Balcony (E)', element: 'Air', score: 8.8, maxScore: 10, status: 'Balanced', direction: 'East (90°)', observation: 'Active morning prana collection.' }
+    ],
+    amenities: ['East Balcony Deck', 'Covered Parking', '24/7 Security & CCTV', 'Rainwater Harvesting'],
+    reviews: [],
+    ppCode: 'VVFTT',
+    wing: 'Wing A',
+    seriesNumber: '3',
+    projectName: 'Godrej'
+  },
+
+  // ========================================================
+  // 22. GODREJ WING A – FLAT GGGLT (Series 4 - Balanced 8.7)
+  // ========================================================
+  {
+    id: 'godrej-flat-4',
+    slug: 'godrej-wing-a-ggglt',
+    title: 'Godrej – Wing A (Flat GGGLT)',
+    subtitle: 'Client Reference 3 BHK • Series 4 • Balanced',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 3.45 Cr',
+    priceNumeric: 34500000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 8.7,
+    vastuScoreMax: 10,
+    vastuStatus: 'Functionally Balanced',
+    vastuGrade: 'Grade A+ (8.7/10)',
+    bhk: '3 BHK',
+    bhkNum: 3,
+    sqft: '1,280 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 3,
+    parking: 2,
+    facing: 'East',
+    possession: 'Ready to Move',
+    featured: true,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej 3 BHK Series 4 Facade', category: 'Exterior' }
+    ],
+    overview: 'Godrej Flat GGGLT in Wing A is a spacious 3 BHK apartment (Series 4) situated in prime Andheri. Evaluated across 16 cardinal sub-sectors with verified non-destructive placement.',
+    spatialHighlights: [
+      { title: 'Generous 3 BHK Footprint', description: 'Spacious living, dining, and 3 bedrooms aligned with natural light.', status: 'Optimal' }
+    ],
+    radarScores: { N: 8.9, NE: 8.8, E: 9.0, SE: 8.4, S: 8.2, SW: 8.7, W: 8.5, NW: 8.4 },
+    zones16: [
+      { name: 'Entrance (E)', element: 'Air', score: 9.0, maxScore: 10, status: 'Enhanced', direction: 'East (90°)', observation: 'Indra gateway channeling social harmony.' }
+    ],
+    amenities: ['16-Zone Certified Layout', 'Pooja Sanctum', '2 Covered Garages', 'Gymnasium', 'Landscaped Garden'],
+    reviews: [],
+    ppCode: 'GGGLT',
+    wing: 'Wing A',
+    seriesNumber: '4',
+    projectName: 'Godrej'
+  },
+
+  // ========================================================
+  // 23. GODREJ WING A – FLAT HJJYY (Series 5 - Adaptable 7.8)
+  // ========================================================
+  {
+    id: 'godrej-flat-5',
+    slug: 'godrej-wing-a-hjjyy',
+    title: 'Godrej – Wing A (Flat HJJYY)',
+    subtitle: 'Client Reference 3 BHK • Series 5 • Adaptable',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 3.30 Cr',
+    priceNumeric: 33000000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 7.8,
+    vastuScoreMax: 10,
+    vastuStatus: 'Remedy-Ready',
+    vastuGrade: 'Grade B+ (7.8/10)',
+    bhk: '3 BHK',
+    bhkNum: 3,
+    sqft: '1,250 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 3,
+    parking: 1,
+    facing: 'North-West',
+    possession: 'Ready to Move',
+    featured: false,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej Wing A Series 5 Unit', category: 'Exterior' }
+    ],
+    overview: 'Godrej Flat HJJYY (Series 5) offers a comfortable 3 BHK layout with adaptable elemental placements. Pre-certified non-destructive metallic threshold strips bring the unit to high harmonic resonance.',
+    spatialHighlights: [
+      { title: 'Non-Destructive Remedies Ready', description: 'Subtle brass strip under doorway neutralizes directional deflection without civil demolition.', status: 'Remedied' }
+    ],
+    radarScores: { N: 8.0, NE: 8.1, E: 7.7, SE: 7.5, S: 7.8, SW: 8.1, W: 7.9, NW: 7.6 },
+    zones16: [
+      { name: 'Entrance (NW)', element: 'Air', score: 7.6, maxScore: 10, status: 'Remedy Needed', direction: 'North-West (315°)', observation: 'Pre-installed copper wire harmonizes wind sector.' }
+    ],
+    amenities: ['16-Zone Certified Layout', 'Adaptable Layout', 'Covered Parking', '24/7 Security'],
+    reviews: [],
+    ppCode: 'HJJYY',
+    wing: 'Wing A',
+    seriesNumber: '5',
+    projectName: 'Godrej'
+  },
+
+  // ========================================================
+  // 24. GODREJ WING A – FLAT KKYI (Series 6 - Balanced 8.5)
+  // ========================================================
+  {
+    id: 'godrej-flat-6',
+    slug: 'godrej-wing-a-kkyi',
+    title: 'Godrej – Wing A (Flat KKYI)',
+    subtitle: 'Client Reference 3 BHK • Series 6 • Balanced',
+    location: 'Andheri, Mumbai',
+    locality: 'Andheri',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    price: '₹ 3.50 Cr',
+    priceNumeric: 35000000,
+    priceDetail: 'All Inclusive',
+    vastuScore: 8.5,
+    vastuScoreMax: 10,
+    vastuStatus: 'Functionally Balanced',
+    vastuGrade: 'Grade A (8.5/10)',
+    bhk: '3 BHK',
+    bhkNum: 3,
+    sqft: '1,310 sq.ft.',
+    propertyType: 'Apartment',
+    reraId: 'P51800049210',
+    reraStatus: 'RERA Registered',
+    bathrooms: 3,
+    parking: 2,
+    facing: 'North',
+    possession: 'Ready to Move',
+    featured: false,
+    heroImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+    galleryImages: [
+      { src: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80', caption: 'Godrej Wing A Series 6 Elevation', category: 'Exterior' }
+    ],
+    overview: 'Godrej Flat KKYI (Series 6) is a balanced 3 BHK corner apartment in Wing A. Features Northward orientation with consistent ambient daylight and quiet bedroom alignment.',
+    spatialHighlights: [
+      { title: 'North Cardinal Axis', description: 'Living area oriented toward Kuber magnetic corridor.', status: 'Optimal' }
+    ],
+    radarScores: { N: 8.9, NE: 8.7, E: 8.4, SE: 8.1, S: 8.0, SW: 8.6, W: 8.5, NW: 8.3 },
+    zones16: [
+      { name: 'Entrance (N)', element: 'Water', score: 8.9, maxScore: 10, status: 'Balanced', direction: 'North (0°)', observation: 'Kuber gateway ensuring stable financial flow.' }
+    ],
+    amenities: ['16-Zone Certified Layout', 'Dedicated Pooja Alcove', '2 Covered Garages', 'Clubhouse'],
+    reviews: [],
+    ppCode: 'KKYI',
+    wing: 'Wing A',
+    seriesNumber: '6',
+    projectName: 'Godrej'
   }
 ];
 
@@ -833,6 +1147,19 @@ export function getAllProperties(): Property[] {
 }
 
 export function getPropertyBySlug(slug: string): Property | undefined {
-  return propertiesData.find((p) => p.slug === slug);
+  if (!slug) return undefined;
+  const clean = slug.toLowerCase().trim();
+  return propertiesData.find((p) => {
+    const pSlug = (p.slug || '').toLowerCase();
+    const pId = (p.id || '').toLowerCase();
+    const pCode = (p.ppCode || '').toLowerCase();
+    return (
+      pSlug === clean ||
+      pId === clean ||
+      pCode === clean ||
+      (pCode && clean.includes(pCode)) ||
+      (pSlug && clean.endsWith(pSlug))
+    );
+  });
 }
 

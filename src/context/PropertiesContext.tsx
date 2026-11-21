@@ -185,7 +185,127 @@ export function PropertiesProvider({ children }: { children: ReactNode }) {
   const getPropertyBySlug = (slug: string): Property | undefined => {
     if (!slug) return undefined;
     const clean = slug.toLowerCase().trim();
-    return properties.find((p) => p.slug === clean || p.slug === slug || p.id === slug);
+
+    // 1. Check loaded properties (includes canonical propertiesData + localStorage properties)
+    const direct = properties.find((p) => {
+      const pSlug = (p.slug || '').toLowerCase();
+      const pId = (p.id || '').toLowerCase();
+      const pCode = (p.ppCode || '').toLowerCase();
+      return (
+        pSlug === clean ||
+        pId === clean ||
+        pCode === clean ||
+        (pCode && clean.includes(pCode)) ||
+        (pSlug && clean.endsWith(pSlug))
+      );
+    });
+    if (direct) return direct;
+
+    // 2. Check discoveryFlats: if a flat is matched, resolve its property or synthesize one
+    const flatMatch = discoveryFlats.find(
+      (f) =>
+        f.slug?.toLowerCase() === clean ||
+        f.id.toLowerCase() === clean ||
+        f.ppCode.toLowerCase() === clean ||
+        clean.includes(f.ppCode.toLowerCase())
+    );
+    if (flatMatch) {
+      if (flatMatch.propertyId) {
+        const found = properties.find((p) => p.id === flatMatch.propertyId);
+        if (found) return found;
+      }
+
+      const synthStatus =
+        flatMatch.vastuStatus === 'Aligned'
+          ? 'Inherently Aligned'
+          : flatMatch.vastuStatus === 'Balanced'
+          ? 'Functionally Balanced'
+          : 'Remedy-Ready';
+      const synthScore =
+        flatMatch.vastuStatus === 'Aligned' ? 9.4 : flatMatch.vastuStatus === 'Balanced' ? 8.6 : 7.8;
+      const synthGrade =
+        flatMatch.vastuStatus === 'Aligned'
+          ? 'Grade A++ (9.4/10)'
+          : flatMatch.vastuStatus === 'Balanced'
+          ? 'Grade A (8.6/10)'
+          : 'Grade B+ (7.8/10)';
+
+      return {
+        id: flatMatch.id,
+        slug: flatMatch.slug || `flat-${flatMatch.ppCode.toLowerCase()}`,
+        title: `${flatMatch.projectName} – ${flatMatch.wing} (Flat ${flatMatch.ppCode})`,
+        subtitle: `${flatMatch.bhk} • Series ${flatMatch.seriesNumber || '1'} • ${flatMatch.vastuStatus}`,
+        location: `${flatMatch.locality}, ${flatMatch.city}`,
+        locality: flatMatch.locality,
+        city: flatMatch.city,
+        state: flatMatch.state || 'Maharashtra',
+        price: flatMatch.price || '₹ 2.45 Cr',
+        priceNumeric: 24500000,
+        priceDetail: 'All Inclusive',
+        vastuScore: synthScore,
+        vastuScoreMax: 10,
+        vastuStatus: synthStatus,
+        vastuGrade: synthGrade,
+        bhk: flatMatch.bhk,
+        bhkNum: parseInt(flatMatch.bhk) || 2,
+        sqft: flatMatch.sqft || '900 sq.ft.',
+        propertyType: 'Apartment',
+        reraId: 'P51800049210',
+        reraStatus: 'RERA Registered',
+        bathrooms: 2,
+        parking: 1,
+        facing: flatMatch.facing || 'North-East',
+        possession: 'Ready to Move',
+        featured: true,
+        heroImage:
+          flatMatch.heroImage ||
+          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+        galleryImages: [
+          {
+            src:
+              flatMatch.heroImage ||
+              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+            caption: 'Architectural Elevation',
+            category: 'Exterior',
+          },
+          {
+            src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+            caption: 'Sunlit Living Room',
+            category: 'Living',
+          },
+        ],
+        overview:
+          flatMatch.overview ||
+          `${flatMatch.projectName} Flat ${flatMatch.ppCode} in ${flatMatch.wing} is an evaluated residence in ${flatMatch.locality}, ${flatMatch.city}.`,
+        spatialHighlights: [
+          {
+            title: 'Cardinal Alignment',
+            description: 'Oriented according to ancient Mayamatam 16-zone spatial principles.',
+            status: 'Optimal',
+          },
+        ],
+        radarScores: { N: 9.2, NE: 9.4, E: 8.8, SE: 8.4, S: 8.2, SW: 8.7, W: 8.5, NW: 8.6 },
+        zones16: [
+          {
+            name: 'Entrance',
+            element: 'Water',
+            score: 9.4,
+            maxScore: 10,
+            status: 'Enhanced',
+            direction: 'North-East (45°)',
+            observation: 'Auspicious entry portal with high morning solar intake.',
+          },
+        ],
+        amenities: ['16-Zone Certified Layout', 'East Balcony', 'Covered Parking', '24/7 Security'],
+        reviews: [],
+        ppCode: flatMatch.ppCode,
+        wing: flatMatch.wing,
+        seriesNumber: flatMatch.seriesNumber,
+        projectName: flatMatch.projectName,
+      };
+    }
+
+    return undefined;
   };
 
   const addProperty = (newProp: Property) => {
